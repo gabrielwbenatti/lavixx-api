@@ -61,9 +61,17 @@ public class ServiceOrderService {
     private final EntityManager entityManager;
 
     @Transactional(readOnly = true)
-    public List<ServiceOrderResponse> list(ServiceStatus status, UUID customerId, UUID vehicleId) {
+    public List<ServiceOrderResponse> list(
+            ServiceStatus status,
+            UUID customerId,
+            UUID vehicleId,
+            OffsetDateTime fromDate,
+            OffsetDateTime toDate,
+            BigDecimal minAmount,
+            BigDecimal maxAmount) {
         UUID tenantId = SecurityUtils.currentTenantId();
         List<ServiceOrder> orders;
+
         if (customerId != null) {
             orders = serviceOrderRepository.findAllByTenantIdAndCustomerId(tenantId, customerId);
         } else if (vehicleId != null) {
@@ -73,7 +81,41 @@ public class ServiceOrderService {
         } else {
             orders = serviceOrderRepository.findAllByTenantId(tenantId);
         }
-        return orders.stream().map(serviceOrderMapper::toResponse).toList();
+
+        // Força carregamento dos relacionamentos lazy
+        orders.forEach(o -> {
+            o.getCustomer().getId();
+            o.getVehicle().getId();
+            o.getItems().size();
+            o.getPayments().size();
+        });
+
+        return orders.stream()
+                .filter(o -> filterByDateRange(o, fromDate, toDate))
+                .filter(o -> filterByAmount(o, minAmount, maxAmount))
+                .map(serviceOrderMapper::toResponse)
+                .toList();
+    }
+
+    private boolean filterByDateRange(ServiceOrder order, OffsetDateTime fromDate, OffsetDateTime toDate) {
+        if (fromDate == null && toDate == null) return true;
+        if (fromDate != null && order.getCreatedAt().isBefore(fromDate)) return false;
+        if (toDate != null && order.getCreatedAt().isAfter(toDate)) return false;
+        return true;
+    }
+
+    private boolean filterByAmount(ServiceOrder order, BigDecimal minAmount, BigDecimal maxAmount) {
+        if (minAmount == null && maxAmount == null) return true;
+
+        BigDecimal total = order.getItems().stream()
+                .map(item -> item.getUnitPrice()
+                        .subtract(item.getDiscount())
+                        .multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (minAmount != null && total.compareTo(minAmount) < 0) return false;
+        if (maxAmount != null && total.compareTo(maxAmount) > 0) return false;
+        return true;
     }
 
     @Transactional(readOnly = true)

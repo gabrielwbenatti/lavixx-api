@@ -40,8 +40,31 @@ public class ServiceOrderController {
     public ResponseEntity<List<ServiceOrderResponse>> list(
             @RequestParam(required = false) ServiceStatus status,
             @RequestParam(required = false) UUID customerId,
-            @RequestParam(required = false) UUID vehicleId) {
-        return ResponseEntity.ok(serviceOrderService.list(status, customerId, vehicleId));
+            @RequestParam(required = false) UUID vehicleId,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) java.math.BigDecimal minAmount,
+            @RequestParam(required = false) java.math.BigDecimal maxAmount) {
+        java.time.OffsetDateTime from = null;
+        java.time.OffsetDateTime to = null;
+
+        if (fromDate != null && !fromDate.isEmpty()) {
+            try {
+                from = java.time.OffsetDateTime.parse(fromDate);
+            } catch (Exception e) {
+                from = java.time.LocalDate.parse(fromDate).atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
+            }
+        }
+
+        if (toDate != null && !toDate.isEmpty()) {
+            try {
+                to = java.time.OffsetDateTime.parse(toDate);
+            } catch (Exception e) {
+                to = java.time.LocalDate.parse(toDate).atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime();
+            }
+        }
+
+        return ResponseEntity.ok(serviceOrderService.list(status, customerId, vehicleId, from, to, minAmount, maxAmount));
     }
 
     @GetMapping("/{id}")
