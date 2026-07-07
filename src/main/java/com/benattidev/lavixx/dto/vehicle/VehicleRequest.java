@@ -1,5 +1,6 @@
 package com.benattidev.lavixx.dto.vehicle;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import com.benattidev.lavixx.entity.enums.VehicleType;
@@ -33,4 +34,11 @@ public record VehicleRequest(
         String color,
 
         Short year) {
+
+    // Normaliza a placa removendo formatacao (apenas alfanumerico, em maiusculas).
+    public VehicleRequest {
+        if (plate != null) {
+            plate = plate.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
+        }
+    }
 }
