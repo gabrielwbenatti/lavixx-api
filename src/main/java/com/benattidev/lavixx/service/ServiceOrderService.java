@@ -10,11 +10,14 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.benattidev.lavixx.dto.payment.PaymentRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
+import com.benattidev.lavixx.entity.Payment;
+import com.benattidev.lavixx.entity.PaymentMethod;
 import com.benattidev.lavixx.entity.ServiceOrder;
 import com.benattidev.lavixx.entity.ServiceOrderItem;
 import com.benattidev.lavixx.entity.Tenant;
@@ -23,6 +26,8 @@ import com.benattidev.lavixx.entity.enums.ServiceStatus;
 import com.benattidev.lavixx.exception.BusinessException;
 import com.benattidev.lavixx.exception.NotFoundException;
 import com.benattidev.lavixx.mapper.ServiceOrderMapper;
+import com.benattidev.lavixx.repository.PaymentMethodRepository;
+import com.benattidev.lavixx.repository.PaymentRepository;
 import com.benattidev.lavixx.repository.ServiceOrderItemRepository;
 import com.benattidev.lavixx.repository.ServiceOrderRepository;
 import com.benattidev.lavixx.repository.ServiceRepository;
@@ -50,6 +55,8 @@ public class ServiceOrderService {
     private final ServiceOrderItemRepository serviceOrderItemRepository;
     private final VehicleRepository vehicleRepository;
     private final ServiceRepository serviceRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+    private final PaymentRepository paymentRepository;
     private final ServiceOrderMapper serviceOrderMapper;
     private final EntityManager entityManager;
 
@@ -152,6 +159,42 @@ public class ServiceOrderService {
             throw new BusinessException("Apenas ordens com status 'waiting' podem ser removidas");
         }
         serviceOrderRepository.delete(order);
+    }
+
+    @Transactional
+    public ServiceOrderResponse addPayment(UUID orderId, PaymentRequest request) {
+        UUID tenantId = SecurityUtils.currentTenantId();
+        ServiceOrder order = loadOwned(orderId);
+        if (order.getStatus() == ServiceStatus.cancelled) {
+            throw new BusinessException("Nao e possivel registrar pagamento em uma ordem cancelada");
+        }
+        PaymentMethod method = paymentMethodRepository
+                .findByIdAndTenantId(request.paymentMethodId(), tenantId)
+                .orElseThrow(() -> new NotFoundException("Forma de pagamento nao encontrada"));
+
+        Payment payment = Payment.builder()
+                .tenant(order.getTenant())
+                .serviceOrder(order)
+                .paymentMethod(method)
+                .methodName(method.getName())
+                .amount(request.amount())
+                .paidAt(OffsetDateTime.now())
+                .build();
+        order.getPayments().add(payment);
+        return serviceOrderMapper.toResponse(order);
+    }
+
+    @Transactional
+    public ServiceOrderResponse removePayment(UUID orderId, UUID paymentId) {
+        UUID tenantId = SecurityUtils.currentTenantId();
+        ServiceOrder order = loadOwned(orderId);
+        Payment payment = paymentRepository.findByIdAndTenantId(paymentId, tenantId)
+                .orElseThrow(() -> new NotFoundException("Pagamento nao encontrado"));
+        if (!payment.getServiceOrder().getId().equals(orderId)) {
+            throw new NotFoundException("Pagamento nao encontrado");
+        }
+        order.getPayments().removeIf(p -> p.getId().equals(payment.getId()));
+        return serviceOrderMapper.toResponse(order);
     }
 
     private ServiceOrder loadOwned(UUID id) {

@@ -5,10 +5,13 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
+import com.benattidev.lavixx.dto.payment.PaymentResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
+import com.benattidev.lavixx.entity.Payment;
 import com.benattidev.lavixx.entity.ServiceOrder;
 import com.benattidev.lavixx.entity.ServiceOrderItem;
+import com.benattidev.lavixx.entity.enums.PaymentStatus;
 
 @Component
 public class ServiceOrderMapper {
@@ -20,6 +23,14 @@ public class ServiceOrderMapper {
         BigDecimal total = items.stream()
                 .map(ServiceOrderItemResponse::finalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<PaymentResponse> payments = order.getPayments().stream()
+                .map(this::toPaymentResponse)
+                .toList();
+        BigDecimal paidTotal = payments.stream()
+                .map(PaymentResponse::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         return new ServiceOrderResponse(
                 order.getId(),
                 order.getCustomer().getId(),
@@ -27,6 +38,9 @@ public class ServiceOrderMapper {
                 order.getStatus(),
                 items,
                 total,
+                payments,
+                paidTotal,
+                resolvePaymentStatus(total, paidTotal),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 order.getFinishedAt());
@@ -44,5 +58,25 @@ public class ServiceOrderMapper {
                 item.getDiscount(),
                 item.getQuantity(),
                 finalPrice);
+    }
+
+    public PaymentResponse toPaymentResponse(Payment payment) {
+        return new PaymentResponse(
+                payment.getId(),
+                payment.getPaymentMethod() != null ? payment.getPaymentMethod().getId() : null,
+                payment.getMethodName(),
+                payment.getAmount(),
+                payment.getPaidAt());
+    }
+
+    /** pending: nada pago. paid: pago cobre o total. partial: pago parcial (> 0 e < total). */
+    private PaymentStatus resolvePaymentStatus(BigDecimal total, BigDecimal paidTotal) {
+        if (paidTotal.compareTo(BigDecimal.ZERO) <= 0) {
+            return PaymentStatus.pending;
+        }
+        if (paidTotal.compareTo(total) >= 0) {
+            return PaymentStatus.paid;
+        }
+        return PaymentStatus.partial;
     }
 }

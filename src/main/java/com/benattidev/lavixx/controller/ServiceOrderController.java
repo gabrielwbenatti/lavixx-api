@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.benattidev.lavixx.dto.payment.PaymentRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderRequest;
@@ -74,6 +75,18 @@ public class ServiceOrderController {
     public ResponseEntity<Void> removeItem(@PathVariable UUID id, @PathVariable UUID itemId) {
         serviceOrderService.removeItem(id, itemId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/payments")
+    public ResponseEntity<ServiceOrderResponse> addPayment(@PathVariable UUID id,
+                                                           @Valid @RequestBody PaymentRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(serviceOrderService.addPayment(id, request));
+    }
+
+    @DeleteMapping("/{id}/payments/{paymentId}")
+    public ResponseEntity<ServiceOrderResponse> removePayment(@PathVariable UUID id,
+                                                              @PathVariable UUID paymentId) {
+        return ResponseEntity.ok(serviceOrderService.removePayment(id, paymentId));
     }
 
     @DeleteMapping("/{id}")

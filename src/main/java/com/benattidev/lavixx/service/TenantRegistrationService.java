@@ -24,6 +24,7 @@ public class TenantRegistrationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final PaymentMethodService paymentMethodService;
 
     @Transactional
     public TenantRegistrationResponse register(TenantRegistrationRequest request) {
@@ -50,6 +51,9 @@ public class TenantRegistrationService {
                 .role(UserRole.admin)
                 .build();
         admin = userRepository.save(admin);
+
+        // Cria as formas de pagamento padrao para o novo estabelecimento.
+        paymentMethodService.seedDefaults(tenant);
 
         String token = jwtService.generateToken(admin);
 

@@ -58,4 +58,9 @@ public class ServiceOrder extends BaseEntity {
     @OneToMany(mappedBy = "serviceOrder", fetch = FetchType.LAZY,
                cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ServiceOrderItem> items = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "serviceOrder", fetch = FetchType.LAZY,
+               cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Payment> payments = new ArrayList<>();
 }
