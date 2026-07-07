@@ -61,11 +61,18 @@ public class ServiceOrderService {
     private final EntityManager entityManager;
 
     @Transactional(readOnly = true)
-    public List<ServiceOrderResponse> list(ServiceStatus status) {
+    public List<ServiceOrderResponse> list(ServiceStatus status, UUID customerId, UUID vehicleId) {
         UUID tenantId = SecurityUtils.currentTenantId();
-        List<ServiceOrder> orders = status != null
-                ? serviceOrderRepository.findAllByTenantIdAndStatus(tenantId, status)
-                : serviceOrderRepository.findAllByTenantId(tenantId);
+        List<ServiceOrder> orders;
+        if (customerId != null) {
+            orders = serviceOrderRepository.findAllByTenantIdAndCustomerId(tenantId, customerId);
+        } else if (vehicleId != null) {
+            orders = serviceOrderRepository.findAllByTenantIdAndVehicleId(tenantId, vehicleId);
+        } else if (status != null) {
+            orders = serviceOrderRepository.findAllByTenantIdAndStatus(tenantId, status);
+        } else {
+            orders = serviceOrderRepository.findAllByTenantId(tenantId);
+        }
         return orders.stream().map(serviceOrderMapper::toResponse).toList();
     }
 

@@ -38,8 +38,10 @@ public class ServiceOrderController {
 
     @GetMapping
     public ResponseEntity<List<ServiceOrderResponse>> list(
-            @RequestParam(required = false) ServiceStatus status) {
-        return ResponseEntity.ok(serviceOrderService.list(status));
+            @RequestParam(required = false) ServiceStatus status,
+            @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) UUID vehicleId) {
+        return ResponseEntity.ok(serviceOrderService.list(status, customerId, vehicleId));
     }
 
     @GetMapping("/{id}")
