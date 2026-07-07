@@ -13,6 +13,7 @@ public class CustomerMapper {
                 customer.getId(),
                 customer.getName(),
                 customer.getDocument(),
+                customer.getPhone(),
                 customer.getCreatedAt(),
                 customer.getUpdatedAt());
     }

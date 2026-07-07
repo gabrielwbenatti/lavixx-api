@@ -46,6 +46,7 @@ public class CustomerService {
                 .tenant(entityManager.getReference(Tenant.class, tenantId))
                 .name(request.name())
                 .document(blankToNull(request.document()))
+                .phone(blankToNull(request.phone()))
                 .build();
         return customerMapper.toResponse(customerRepository.save(customer));
     }
@@ -55,6 +56,7 @@ public class CustomerService {
         Customer customer = loadOwned(id);
         customer.setName(request.name());
         customer.setDocument(blankToNull(request.document()));
+        customer.setPhone(blankToNull(request.phone()));
         return customerMapper.toResponse(customer);
     }
 

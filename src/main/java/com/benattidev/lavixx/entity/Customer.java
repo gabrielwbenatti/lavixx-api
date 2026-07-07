@@ -30,4 +30,7 @@ public class Customer extends BaseEntity {
 
     @Column(name = "document", length = 14)
     private String document;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
 }

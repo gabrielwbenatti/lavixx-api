@@ -7,6 +7,7 @@ public record CustomerResponse(
         UUID id,
         String name,
         String document,
+        String phone,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
 }
