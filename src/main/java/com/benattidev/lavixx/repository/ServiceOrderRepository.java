@@ -1,5 +1,6 @@
 package com.benattidev.lavixx.repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,4 +21,7 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, UUID
     List<ServiceOrder> findAllByTenantIdAndCustomerId(UUID tenantId, UUID customerId);
 
     List<ServiceOrder> findAllByTenantIdAndVehicleId(UUID tenantId, UUID vehicleId);
+
+    List<ServiceOrder> findAllByTenantIdAndStatusAndFinishedAtBetween(
+            UUID tenantId, ServiceStatus status, OffsetDateTime from, OffsetDateTime to);
 }
