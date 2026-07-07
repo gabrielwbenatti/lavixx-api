@@ -1,5 +1,7 @@
 package com.benattidev.lavixx.dto.tenant;
 
+import java.util.Locale;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -26,4 +28,11 @@ public record TenantRegistrationRequest(
         @NotBlank(message = "Senha e obrigatoria")
         @Size(min = 8, max = 100, message = "Senha deve ter entre 8 e 100 caracteres")
         String adminPassword) {
+
+    // Normaliza o e-mail (trim + minusculas) para garantir cadastro/busca consistentes.
+    public TenantRegistrationRequest {
+        if (adminEmail != null) {
+            adminEmail = adminEmail.trim().toLowerCase(Locale.ROOT);
+        }
+    }
 }
