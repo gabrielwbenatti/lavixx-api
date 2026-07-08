@@ -4,11 +4,12 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 
+/** Um item da OS referencia OU um serviço OU um produto (exatamente um). */
 public record ServiceOrderItemRequest(
-        @NotNull(message = "Servico e obrigatorio")
         UUID serviceId,
+
+        UUID productId,
 
         BigDecimal discount,
 

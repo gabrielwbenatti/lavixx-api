@@ -16,8 +16,11 @@ import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
+import com.benattidev.lavixx.dto.loyalty.LoyaltyStatusResponse;
+import com.benattidev.lavixx.entity.Customer;
 import com.benattidev.lavixx.entity.Payment;
 import com.benattidev.lavixx.entity.PaymentMethod;
+import com.benattidev.lavixx.entity.Product;
 import com.benattidev.lavixx.entity.ServiceOrder;
 import com.benattidev.lavixx.entity.ServiceOrderItem;
 import com.benattidev.lavixx.entity.Tenant;
@@ -28,6 +31,7 @@ import com.benattidev.lavixx.exception.NotFoundException;
 import com.benattidev.lavixx.mapper.ServiceOrderMapper;
 import com.benattidev.lavixx.repository.PaymentMethodRepository;
 import com.benattidev.lavixx.repository.PaymentRepository;
+import com.benattidev.lavixx.repository.ProductRepository;
 import com.benattidev.lavixx.repository.ServiceOrderItemRepository;
 import com.benattidev.lavixx.repository.ServiceOrderRepository;
 import com.benattidev.lavixx.repository.ServiceRepository;
@@ -55,9 +59,11 @@ public class ServiceOrderService {
     private final ServiceOrderItemRepository serviceOrderItemRepository;
     private final VehicleRepository vehicleRepository;
     private final ServiceRepository serviceRepository;
+    private final ProductRepository productRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final PaymentRepository paymentRepository;
     private final TenantRepository tenantRepository;
+    private final LoyaltyService loyaltyService;
     private final ServiceOrderMapper serviceOrderMapper;
 
     @Transactional(readOnly = true)
@@ -113,8 +119,14 @@ public class ServiceOrderService {
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        BigDecimal loyaltyPct = order.getLoyaltyRewardPercent() != null
+                ? order.getLoyaltyRewardPercent() : BigDecimal.ZERO;
+        BigDecimal base = subtotal.subtract(subtotal
+                .multiply(loyaltyPct)
+                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP));
+
         BigDecimal taxRate = order.getServiceTax() != null ? order.getServiceTax() : BigDecimal.ZERO;
-        BigDecimal total = subtotal.add(subtotal
+        BigDecimal total = base.add(base
                 .multiply(taxRate)
                 .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP));
 
@@ -187,6 +199,43 @@ public class ServiceOrderService {
             throw new BusinessException("A taxa de servico deve estar entre 0% e 100%");
         }
         order.setServiceTax(serviceTax);
+        return serviceOrderMapper.toResponse(order);
+    }
+
+    @Transactional
+    public ServiceOrderResponse redeemLoyalty(UUID orderId) {
+        ServiceOrder order = loadOwned(orderId);
+        if (order.getStatus() == ServiceStatus.cancelled) {
+            throw new BusinessException("Nao e possivel aplicar premio em uma ordem cancelada");
+        }
+        if (order.getLoyaltyRewardPercent().signum() > 0) {
+            throw new BusinessException("Esta ordem ja tem um premio de fidelidade aplicado");
+        }
+        Customer customer = order.getCustomer();
+        Tenant tenant = order.getTenant();
+        LoyaltyStatusResponse status = loyaltyService.computeStatus(customer, tenant);
+        if (!status.enabled()) {
+            throw new BusinessException("O programa de fidelidade nao esta habilitado");
+        }
+        if (status.rewardsAvailable() < 1) {
+            throw new BusinessException("O cliente ainda nao possui premio de fidelidade disponivel");
+        }
+        order.setLoyaltyRewardPercent(tenant.getLoyaltyRewardPercent());
+        customer.setLoyaltyRewardsRedeemed(customer.getLoyaltyRewardsRedeemed() + 1);
+        return serviceOrderMapper.toResponse(order);
+    }
+
+    @Transactional
+    public ServiceOrderResponse removeLoyalty(UUID orderId) {
+        ServiceOrder order = loadOwned(orderId);
+        if (order.getLoyaltyRewardPercent().signum() > 0) {
+            order.setLoyaltyRewardPercent(BigDecimal.ZERO);
+            Customer customer = order.getCustomer();
+            int redeemed = customer.getLoyaltyRewardsRedeemed();
+            if (redeemed > 0) {
+                customer.setLoyaltyRewardsRedeemed(redeemed - 1);
+            }
+        }
         return serviceOrderMapper.toResponse(order);
     }
 
@@ -287,24 +336,35 @@ public class ServiceOrderService {
     }
 
     private ServiceOrderItem buildItem(ServiceOrder order, ServiceOrderItemRequest request, UUID tenantId) {
-        com.benattidev.lavixx.entity.Service service =
-                serviceRepository.findByIdAndTenantId(request.serviceId(), tenantId)
-                        .orElseThrow(() -> new NotFoundException("Servico nao encontrado"));
+        boolean hasService = request.serviceId() != null;
+        boolean hasProduct = request.productId() != null;
+        if (hasService == hasProduct) {
+            throw new BusinessException("Informe exatamente um servico ou um produto para o item");
+        }
 
         BigDecimal discount = request.discount() != null ? request.discount() : BigDecimal.ZERO;
         Short quantity = request.quantity() != null ? request.quantity() : 1;
 
-        validateDiscount(service.getPrice(), discount);
-
-        return ServiceOrderItem.builder()
+        ServiceOrderItem.ServiceOrderItemBuilder builder = ServiceOrderItem.builder()
                 .tenant(order.getTenant())
                 .serviceOrder(order)
-                .service(service)
-                .name(service.getName())
-                .unitPrice(service.getPrice())
                 .discount(discount)
-                .quantity(quantity)
-                .build();
+                .quantity(quantity);
+
+        if (hasService) {
+            com.benattidev.lavixx.entity.Service service =
+                    serviceRepository.findByIdAndTenantId(request.serviceId(), tenantId)
+                            .orElseThrow(() -> new NotFoundException("Servico nao encontrado"));
+            validateDiscount(service.getPrice(), discount);
+            builder.service(service).name(service.getName()).unitPrice(service.getPrice());
+        } else {
+            Product product = productRepository.findByIdAndTenantId(request.productId(), tenantId)
+                    .orElseThrow(() -> new NotFoundException("Produto nao encontrado"));
+            validateDiscount(product.getPrice(), discount);
+            builder.product(product).name(product.getName()).unitPrice(product.getPrice());
+        }
+
+        return builder.build();
     }
 
     private void validateDiscount(BigDecimal unitPrice, BigDecimal discount) {

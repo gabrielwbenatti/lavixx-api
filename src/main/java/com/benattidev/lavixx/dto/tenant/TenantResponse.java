@@ -9,5 +9,8 @@ public record TenantResponse(
     String document,
     String operatingHoursStart,
     String operatingHoursEnd,
-    BigDecimal defaultServiceTax
+    BigDecimal defaultServiceTax,
+    boolean loyaltyEnabled,
+    short loyaltyTarget,
+    BigDecimal loyaltyRewardPercent
 ) {}

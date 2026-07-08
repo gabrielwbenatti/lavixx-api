@@ -32,4 +32,19 @@ public class Tenant extends BaseEntity {
 
     @Column(name = "default_service_tax")
     private java.math.BigDecimal defaultServiceTax;
+
+    /** Programa de fidelidade (cartão) habilitado. */
+    @Builder.Default
+    @Column(name = "loyalty_enabled", nullable = false)
+    private boolean loyaltyEnabled = false;
+
+    /** Nº de lavagens concluídas para ganhar um prêmio. */
+    @Builder.Default
+    @Column(name = "loyalty_target", nullable = false)
+    private short loyaltyTarget = 10;
+
+    /** Prêmio: % de desconto aplicado na OS ao resgatar (100 = grátis). */
+    @Builder.Default
+    @Column(name = "loyalty_reward_percent", nullable = false)
+    private java.math.BigDecimal loyaltyRewardPercent = java.math.BigDecimal.valueOf(100);
 }

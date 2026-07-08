@@ -60,6 +60,11 @@ public class ServiceOrder extends BaseEntity {
     @Column(name = "service_tax", nullable = false, precision = 5, scale = 2)
     private BigDecimal serviceTax = BigDecimal.ZERO;
 
+    /** Desconto de fidelidade (%) aplicado a esta OS ao resgatar um prêmio (0 = nenhum). */
+    @Builder.Default
+    @Column(name = "loyalty_reward_percent", nullable = false, precision = 5, scale = 2)
+    private BigDecimal loyaltyRewardPercent = BigDecimal.ZERO;
+
     @Builder.Default
     @OneToMany(mappedBy = "serviceOrder", fetch = FetchType.LAZY,
                cascade = CascadeType.ALL, orphanRemoval = true)

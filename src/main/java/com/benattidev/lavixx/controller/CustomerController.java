@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.benattidev.lavixx.dto.customer.CustomerRequest;
 import com.benattidev.lavixx.dto.customer.CustomerResponse;
+import com.benattidev.lavixx.dto.loyalty.LoyaltyStatusResponse;
 import com.benattidev.lavixx.service.CustomerService;
+import com.benattidev.lavixx.service.LoyaltyService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,10 +29,16 @@ import lombok.RequiredArgsConstructor;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final LoyaltyService loyaltyService;
 
     @GetMapping
     public ResponseEntity<List<CustomerResponse>> list() {
         return ResponseEntity.ok(customerService.list());
+    }
+
+    @GetMapping("/{id}/loyalty")
+    public ResponseEntity<LoyaltyStatusResponse> loyalty(@PathVariable UUID id) {
+        return ResponseEntity.ok(loyaltyService.statusFor(id));
     }
 
     @GetMapping("/{id}")

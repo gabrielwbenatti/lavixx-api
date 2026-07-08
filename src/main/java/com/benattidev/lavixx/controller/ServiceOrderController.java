@@ -90,6 +90,16 @@ public class ServiceOrderController {
         return ResponseEntity.ok(serviceOrderService.updateTax(id, request.serviceTax()));
     }
 
+    @PostMapping("/{id}/loyalty-redeem")
+    public ResponseEntity<ServiceOrderResponse> redeemLoyalty(@PathVariable UUID id) {
+        return ResponseEntity.ok(serviceOrderService.redeemLoyalty(id));
+    }
+
+    @DeleteMapping("/{id}/loyalty-redeem")
+    public ResponseEntity<ServiceOrderResponse> removeLoyalty(@PathVariable UUID id) {
+        return ResponseEntity.ok(serviceOrderService.removeLoyalty(id));
+    }
+
     @PostMapping("/{id}/items")
     public ResponseEntity<ServiceOrderResponse> addItem(@PathVariable UUID id,
                                                         @Valid @RequestBody ServiceOrderItemRequest request) {

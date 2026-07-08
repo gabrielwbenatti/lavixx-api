@@ -25,11 +25,20 @@ public class ServiceOrderMapper {
                 .map(ServiceOrderItemResponse::finalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Desconto de fidelidade incide sobre o subtotal; a taxa de serviço é
+        // calculada já sobre o valor com desconto (lavagem grátis => taxa zero).
+        BigDecimal loyaltyPercent = order.getLoyaltyRewardPercent() != null
+                ? order.getLoyaltyRewardPercent() : BigDecimal.ZERO;
+        BigDecimal loyaltyDiscount = subtotal
+                .multiply(loyaltyPercent)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal base = subtotal.subtract(loyaltyDiscount);
+
         BigDecimal taxRate = order.getServiceTax() != null ? order.getServiceTax() : BigDecimal.ZERO;
-        BigDecimal taxAmount = subtotal
+        BigDecimal taxAmount = base
                 .multiply(taxRate)
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(taxAmount);
+        BigDecimal total = base.add(taxAmount);
 
         List<PaymentResponse> payments = order.getPayments().stream()
                 .map(this::toPaymentResponse)
@@ -45,6 +54,8 @@ public class ServiceOrderMapper {
                 order.getStatus(),
                 items,
                 subtotal,
+                loyaltyPercent,
+                loyaltyDiscount,
                 taxRate,
                 taxAmount,
                 total,
@@ -63,6 +74,7 @@ public class ServiceOrderMapper {
         return new ServiceOrderItemResponse(
                 item.getId(),
                 item.getService() != null ? item.getService().getId() : null,
+                item.getProduct() != null ? item.getProduct().getId() : null,
                 item.getName(),
                 item.getUnitPrice(),
                 item.getDiscount(),
@@ -79,8 +91,13 @@ public class ServiceOrderMapper {
                 payment.getPaidAt());
     }
 
-    /** pending: nada pago. paid: pago cobre o total. partial: pago parcial (> 0 e < total). */
+    /** paid: nada a cobrar (ex.: fidelidade grátis) ou pago cobre o total. pending: nada
+     *  pago com total > 0. partial: pago parcial (> 0 e < total). */
     private PaymentStatus resolvePaymentStatus(BigDecimal total, BigDecimal paidTotal) {
+        // Total zerado (lavagem grátis por fidelidade, tudo descontado) => quitada.
+        if (total.compareTo(BigDecimal.ZERO) <= 0) {
+            return PaymentStatus.paid;
+        }
         if (paidTotal.compareTo(BigDecimal.ZERO) <= 0) {
             return PaymentStatus.pending;
         }

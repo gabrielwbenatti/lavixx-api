@@ -1,5 +1,6 @@
 package com.benattidev.lavixx.service;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -46,6 +47,24 @@ public class TenantService {
         if (request.defaultServiceTax() != null) {
             tenant.setDefaultServiceTax(request.defaultServiceTax());
         }
+        if (request.loyaltyEnabled() != null) {
+            tenant.setLoyaltyEnabled(request.loyaltyEnabled());
+        }
+        if (request.loyaltyTarget() != null) {
+            if (request.loyaltyTarget() < 1) {
+                throw new com.benattidev.lavixx.exception.BusinessException(
+                        "A meta de fidelidade deve ser de pelo menos 1 lavagem");
+            }
+            tenant.setLoyaltyTarget(request.loyaltyTarget());
+        }
+        if (request.loyaltyRewardPercent() != null) {
+            BigDecimal pct = request.loyaltyRewardPercent();
+            if (pct.compareTo(BigDecimal.ZERO) < 0 || pct.compareTo(BigDecimal.valueOf(100)) > 0) {
+                throw new com.benattidev.lavixx.exception.BusinessException(
+                        "O prêmio de fidelidade deve estar entre 0% e 100%");
+            }
+            tenant.setLoyaltyRewardPercent(pct);
+        }
 
         tenant = tenantRepository.save(tenant);
         return toResponse(tenant);
@@ -58,6 +77,9 @@ public class TenantService {
                 tenant.getDocument(),
                 tenant.getOperatingHoursStart(),
                 tenant.getOperatingHoursEnd(),
-                tenant.getDefaultServiceTax());
+                tenant.getDefaultServiceTax(),
+                tenant.isLoyaltyEnabled(),
+                tenant.getLoyaltyTarget(),
+                tenant.getLoyaltyRewardPercent());
     }
 }

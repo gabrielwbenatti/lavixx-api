@@ -24,4 +24,6 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, UUID
 
     List<ServiceOrder> findAllByTenantIdAndStatusAndFinishedAtBetween(
             UUID tenantId, ServiceStatus status, OffsetDateTime from, OffsetDateTime to);
+
+    long countByTenantIdAndCustomerIdAndStatus(UUID tenantId, UUID customerId, ServiceStatus status);
 }

@@ -1,5 +1,7 @@
 package com.benattidev.lavixx.entity;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -13,13 +15,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "customers")
+@Table(name = "products")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Customer extends BaseEntity {
+public class Product extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tenant_id", nullable = false)
@@ -28,14 +30,6 @@ public class Customer extends BaseEntity {
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Column(name = "document", length = 14)
-    private String document;
-
-    @Column(name = "phone", length = 20)
-    private String phone;
-
-    /** Prêmios de fidelidade já resgatados por este cliente. */
-    @Builder.Default
-    @Column(name = "loyalty_rewards_redeemed", nullable = false)
-    private int loyaltyRewardsRedeemed = 0;
+    @Column(name = "price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
 }

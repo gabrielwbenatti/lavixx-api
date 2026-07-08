@@ -6,5 +6,8 @@ public record TenantUpdateRequest(
     String name,
     String operatingHoursStart,
     String operatingHoursEnd,
-    BigDecimal defaultServiceTax
+    BigDecimal defaultServiceTax,
+    Boolean loyaltyEnabled,
+    Short loyaltyTarget,
+    BigDecimal loyaltyRewardPercent
 ) {}

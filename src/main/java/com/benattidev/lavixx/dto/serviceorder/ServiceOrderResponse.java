@@ -16,6 +16,8 @@ public record ServiceOrderResponse(
         ServiceStatus status,
         List<ServiceOrderItemResponse> items,
         BigDecimal subtotal,
+        BigDecimal loyaltyRewardPercent,
+        BigDecimal loyaltyDiscount,
         BigDecimal serviceTax,
         BigDecimal taxAmount,
         BigDecimal total,
