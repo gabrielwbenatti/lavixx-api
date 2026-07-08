@@ -1,6 +1,7 @@
 package com.benattidev.lavixx.mapper;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
@@ -20,9 +21,15 @@ public class ServiceOrderMapper {
         List<ServiceOrderItemResponse> items = order.getItems().stream()
                 .map(this::toItemResponse)
                 .toList();
-        BigDecimal total = items.stream()
+        BigDecimal subtotal = items.stream()
                 .map(ServiceOrderItemResponse::finalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal taxRate = order.getServiceTax() != null ? order.getServiceTax() : BigDecimal.ZERO;
+        BigDecimal taxAmount = subtotal
+                .multiply(taxRate)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal total = subtotal.add(taxAmount);
 
         List<PaymentResponse> payments = order.getPayments().stream()
                 .map(this::toPaymentResponse)
@@ -37,6 +44,9 @@ public class ServiceOrderMapper {
                 order.getVehicle().getId(),
                 order.getStatus(),
                 items,
+                subtotal,
+                taxRate,
+                taxAmount,
                 total,
                 payments,
                 paidTotal,

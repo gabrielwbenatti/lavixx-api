@@ -1,5 +1,6 @@
 package com.benattidev.lavixx.entity;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +54,11 @@ public class ServiceOrder extends BaseEntity {
 
     @Column(name = "finished_at")
     private OffsetDateTime finishedAt;
+
+    /** Taxa de serviço (%) congelada nesta OS na criação; pode ser ajustada/zerada. */
+    @Builder.Default
+    @Column(name = "service_tax", nullable = false, precision = 5, scale = 2)
+    private BigDecimal serviceTax = BigDecimal.ZERO;
 
     @Builder.Default
     @OneToMany(mappedBy = "serviceOrder", fetch = FetchType.LAZY,

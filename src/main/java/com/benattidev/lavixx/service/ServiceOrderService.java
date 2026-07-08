@@ -31,10 +31,10 @@ import com.benattidev.lavixx.repository.PaymentRepository;
 import com.benattidev.lavixx.repository.ServiceOrderItemRepository;
 import com.benattidev.lavixx.repository.ServiceOrderRepository;
 import com.benattidev.lavixx.repository.ServiceRepository;
+import com.benattidev.lavixx.repository.TenantRepository;
 import com.benattidev.lavixx.repository.VehicleRepository;
 import com.benattidev.lavixx.security.SecurityUtils;
 
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -57,8 +57,8 @@ public class ServiceOrderService {
     private final ServiceRepository serviceRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final PaymentRepository paymentRepository;
+    private final TenantRepository tenantRepository;
     private final ServiceOrderMapper serviceOrderMapper;
-    private final EntityManager entityManager;
 
     @Transactional(readOnly = true)
     public List<ServiceOrderResponse> list(
@@ -107,11 +107,16 @@ public class ServiceOrderService {
     private boolean filterByAmount(ServiceOrder order, BigDecimal minAmount, BigDecimal maxAmount) {
         if (minAmount == null && maxAmount == null) return true;
 
-        BigDecimal total = order.getItems().stream()
+        BigDecimal subtotal = order.getItems().stream()
                 .map(item -> item.getUnitPrice()
                         .subtract(item.getDiscount())
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal taxRate = order.getServiceTax() != null ? order.getServiceTax() : BigDecimal.ZERO;
+        BigDecimal total = subtotal.add(subtotal
+                .multiply(taxRate)
+                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP));
 
         if (minAmount != null && total.compareTo(minAmount) < 0) return false;
         if (maxAmount != null && total.compareTo(maxAmount) > 0) return false;
@@ -130,11 +135,18 @@ public class ServiceOrderService {
         Vehicle vehicle = vehicleRepository.findByIdAndTenantId(request.vehicleId(), tenantId)
                 .orElseThrow(() -> new NotFoundException("Veiculo nao encontrado"));
 
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new NotFoundException("Estabelecimento nao encontrado"));
+        BigDecimal serviceTax = tenant.getDefaultServiceTax() != null
+                ? tenant.getDefaultServiceTax()
+                : BigDecimal.ZERO;
+
         ServiceOrder order = ServiceOrder.builder()
-                .tenant(entityManager.getReference(Tenant.class, tenantId))
+                .tenant(tenant)
                 .customer(vehicle.getCustomer())
                 .vehicle(vehicle)
                 .status(ServiceStatus.waiting)
+                .serviceTax(serviceTax)
                 .build();
 
         if (request.items() != null) {
@@ -161,6 +173,20 @@ public class ServiceOrderService {
             order.setFinishedAt(OffsetDateTime.now());
         }
 
+        return serviceOrderMapper.toResponse(order);
+    }
+
+    @Transactional
+    public ServiceOrderResponse updateTax(UUID id, BigDecimal serviceTax) {
+        ServiceOrder order = loadOwned(id);
+        if (order.getStatus() == ServiceStatus.cancelled) {
+            throw new BusinessException("Nao e possivel ajustar a taxa de uma ordem cancelada");
+        }
+        if (serviceTax.compareTo(BigDecimal.ZERO) < 0
+                || serviceTax.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new BusinessException("A taxa de servico deve estar entre 0% e 100%");
+        }
+        order.setServiceTax(serviceTax);
         return serviceOrderMapper.toResponse(order);
     }
 
