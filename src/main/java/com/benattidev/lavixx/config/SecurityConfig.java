@@ -46,8 +46,13 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/tenants").permitAll()
-                        .anyRequest().authenticated())
+                        // Rotas publicas da API (login e cadastro de estabelecimento).
+                        .requestMatchers("/api/auth/**", "/api/tenants").permitAll()
+                        // Todo o restante da API exige autenticacao...
+                        .requestMatchers("/api/**").authenticated()
+                        // ...e qualquer outra coisa (o site: index.html, assets, rotas do
+                        // React) e publica, pois quem controla o acesso as telas e o front.
+                        .anyRequest().permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

@@ -1,5 +1,8 @@
 HELP.md
 target/
+
+### Build do frontend embutido (gerado por build-prod.ps1) ###
+src/main/resources/static/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
