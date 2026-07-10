@@ -15,15 +15,19 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.benattidev.lavixx.dto.report.ExpenseCategoryTotal;
 import com.benattidev.lavixx.dto.report.PaymentMethodTotal;
 import com.benattidev.lavixx.dto.report.ReportSummaryResponse;
 import com.benattidev.lavixx.dto.report.ServiceTotal;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
+import com.benattidev.lavixx.entity.Expense;
 import com.benattidev.lavixx.entity.Payment;
 import com.benattidev.lavixx.entity.ServiceOrder;
+import com.benattidev.lavixx.entity.enums.ExpenseCategory;
 import com.benattidev.lavixx.entity.enums.ServiceStatus;
 import com.benattidev.lavixx.mapper.ServiceOrderMapper;
+import com.benattidev.lavixx.repository.ExpenseRepository;
 import com.benattidev.lavixx.repository.PaymentRepository;
 import com.benattidev.lavixx.repository.ServiceOrderRepository;
 import com.benattidev.lavixx.security.SecurityUtils;
@@ -36,6 +40,7 @@ public class ReportService {
 
     private final ServiceOrderRepository serviceOrderRepository;
     private final PaymentRepository paymentRepository;
+    private final ExpenseRepository expenseRepository;
     private final ServiceOrderMapper serviceOrderMapper;
 
     @Transactional(readOnly = true)
@@ -95,6 +100,25 @@ public class ReportService {
                 .sorted(Comparator.comparing(PaymentMethodTotal::total).reversed())
                 .toList();
 
+        // Despesas do periodo (pela data da despesa) + lucro no caixa (recebido - despesas).
+        List<Expense> periodExpenses = expenseRepository
+                .findAllByTenantIdAndExpenseDateBetweenOrderByExpenseDateDesc(tenantId, from, to);
+        BigDecimal expenses = periodExpenses.stream()
+                .map(Expense::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal profit = received.subtract(expenses);
+
+        Map<ExpenseCategory, BigDecimal> categoryTotals = new LinkedHashMap<>();
+        Map<ExpenseCategory, Long> categoryCount = new LinkedHashMap<>();
+        for (Expense expense : periodExpenses) {
+            categoryTotals.merge(expense.getCategory(), expense.getAmount(), BigDecimal::add);
+            categoryCount.merge(expense.getCategory(), 1L, Long::sum);
+        }
+        List<ExpenseCategoryTotal> byExpenseCategory = categoryTotals.entrySet().stream()
+                .map(e -> new ExpenseCategoryTotal(e.getKey(), categoryCount.get(e.getKey()), e.getValue()))
+                .sorted(Comparator.comparing(ExpenseCategoryTotal::total).reversed())
+                .toList();
+
         return new ReportSummaryResponse(
                 from, to,
                 completedCount,
@@ -102,7 +126,10 @@ public class ReportService {
                 received,
                 receivable,
                 averageTicket,
+                expenses,
+                profit,
                 byPaymentMethod,
-                byService);
+                byService,
+                byExpenseCategory);
     }
 }
