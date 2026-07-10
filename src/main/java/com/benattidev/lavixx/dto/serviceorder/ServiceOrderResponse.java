@@ -24,6 +24,7 @@ public record ServiceOrderResponse(
         List<PaymentResponse> payments,
         BigDecimal paidTotal,
         PaymentStatus paymentStatus,
+        String observations,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         OffsetDateTime finishedAt) {

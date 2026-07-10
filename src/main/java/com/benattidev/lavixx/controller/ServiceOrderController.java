@@ -22,6 +22,7 @@ import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
+import com.benattidev.lavixx.dto.serviceorder.UpdateObservationsRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateStatusRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateTaxRequest;
 import com.benattidev.lavixx.entity.enums.ServiceStatus;
@@ -88,6 +89,13 @@ public class ServiceOrderController {
     public ResponseEntity<ServiceOrderResponse> updateTax(@PathVariable UUID id,
                                                           @Valid @RequestBody UpdateTaxRequest request) {
         return ResponseEntity.ok(serviceOrderService.updateTax(id, request.serviceTax()));
+    }
+
+    @PatchMapping("/{id}/observations")
+    public ResponseEntity<ServiceOrderResponse> updateObservations(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateObservationsRequest request) {
+        return ResponseEntity.ok(serviceOrderService.updateObservations(id, request.observations()));
     }
 
     @PostMapping("/{id}/loyalty-redeem")

@@ -62,6 +62,7 @@ public class ServiceOrderMapper {
                 payments,
                 paidTotal,
                 resolvePaymentStatus(total, paidTotal),
+                order.getObservations(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 order.getFinishedAt());

@@ -159,6 +159,7 @@ public class ServiceOrderService {
                 .vehicle(vehicle)
                 .status(ServiceStatus.waiting)
                 .serviceTax(serviceTax)
+                .observations(normalizeObservations(request.observations()))
                 .build();
 
         if (request.items() != null) {
@@ -200,6 +201,22 @@ public class ServiceOrderService {
         }
         order.setServiceTax(serviceTax);
         return serviceOrderMapper.toResponse(order);
+    }
+
+    @Transactional
+    public ServiceOrderResponse updateObservations(UUID id, String observations) {
+        ServiceOrder order = loadOwned(id);
+        order.setObservations(normalizeObservations(observations));
+        return serviceOrderMapper.toResponse(order);
+    }
+
+    /** Trim; string vazia vira null para nao guardar observacao "em branco". */
+    private String normalizeObservations(String observations) {
+        if (observations == null) {
+            return null;
+        }
+        String trimmed = observations.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Transactional

@@ -55,6 +55,10 @@ public class ServiceOrder extends BaseEntity {
     @Column(name = "finished_at")
     private OffsetDateTime finishedAt;
 
+    /** Observacoes livres da OS (ex.: avarias, pedidos do cliente). */
+    @Column(name = "observations", length = 1000)
+    private String observations;
+
     /** Taxa de serviço (%) congelada nesta OS na criação; pode ser ajustada/zerada. */
     @Builder.Default
     @Column(name = "service_tax", nullable = false, precision = 5, scale = 2)
