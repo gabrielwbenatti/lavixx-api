@@ -48,4 +48,8 @@ public class User extends BaseEntity {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "role", nullable = false, columnDefinition = "user_role")
     private UserRole role;
+
+    /** Token de convite (uso unico) enquanto o usuario nao definiu a senha; null apos aceitar. */
+    @Column(name = "invite_token", length = 64)
+    private String inviteToken;
 }
