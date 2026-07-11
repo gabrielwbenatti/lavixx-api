@@ -23,6 +23,7 @@ import com.benattidev.lavixx.dto.serviceorder.ServiceOrderRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateObservationsRequest;
+import com.benattidev.lavixx.dto.serviceorder.UpdatePickupEstimateRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateStatusRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateTaxRequest;
 import com.benattidev.lavixx.entity.enums.ServiceStatus;
@@ -47,26 +48,44 @@ public class ServiceOrderController {
             @RequestParam(required = false) String toDate,
             @RequestParam(required = false) java.math.BigDecimal minAmount,
             @RequestParam(required = false) java.math.BigDecimal maxAmount) {
-        java.time.OffsetDateTime from = null;
-        java.time.OffsetDateTime to = null;
+        return ResponseEntity.ok(serviceOrderService.list(status, customerId, vehicleId,
+                parseFrom(fromDate), parseTo(toDate), minAmount, maxAmount));
+    }
 
-        if (fromDate != null && !fromDate.isEmpty()) {
-            try {
-                from = java.time.OffsetDateTime.parse(fromDate);
-            } catch (Exception e) {
-                from = java.time.LocalDate.parse(fromDate).atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
-            }
+    @GetMapping("/schedule")
+    public ResponseEntity<List<ServiceOrderResponse>> listScheduled(
+            @RequestParam String fromDate,
+            @RequestParam String toDate) {
+        return ResponseEntity.ok(serviceOrderService.listScheduled(parseFrom(fromDate), parseTo(toDate)));
+    }
+
+    @GetMapping("/pickup-estimates")
+    public ResponseEntity<List<ServiceOrderResponse>> listPickupEstimates(
+            @RequestParam String fromDate,
+            @RequestParam String toDate) {
+        return ResponseEntity.ok(serviceOrderService.listPickupEstimates(parseFrom(fromDate), parseTo(toDate)));
+    }
+
+    private static java.time.OffsetDateTime parseFrom(String date) {
+        if (date == null || date.isEmpty()) {
+            return null;
         }
-
-        if (toDate != null && !toDate.isEmpty()) {
-            try {
-                to = java.time.OffsetDateTime.parse(toDate);
-            } catch (Exception e) {
-                to = java.time.LocalDate.parse(toDate).atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime();
-            }
+        try {
+            return java.time.OffsetDateTime.parse(date);
+        } catch (Exception e) {
+            return java.time.LocalDate.parse(date).atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
         }
+    }
 
-        return ResponseEntity.ok(serviceOrderService.list(status, customerId, vehicleId, from, to, minAmount, maxAmount));
+    private static java.time.OffsetDateTime parseTo(String date) {
+        if (date == null || date.isEmpty()) {
+            return null;
+        }
+        try {
+            return java.time.OffsetDateTime.parse(date);
+        } catch (Exception e) {
+            return java.time.LocalDate.parse(date).atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime();
+        }
     }
 
     @GetMapping("/{id}")
@@ -96,6 +115,13 @@ public class ServiceOrderController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateObservationsRequest request) {
         return ResponseEntity.ok(serviceOrderService.updateObservations(id, request.observations()));
+    }
+
+    @PatchMapping("/{id}/pickup-estimate")
+    public ResponseEntity<ServiceOrderResponse> updatePickupEstimate(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdatePickupEstimateRequest request) {
+        return ResponseEntity.ok(serviceOrderService.updatePickupEstimate(id, request.estimatedPickupAt()));
     }
 
     @PostMapping("/{id}/loyalty-redeem")

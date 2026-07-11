@@ -25,6 +25,8 @@ public record ServiceOrderResponse(
         BigDecimal paidTotal,
         PaymentStatus paymentStatus,
         String observations,
+        OffsetDateTime scheduledAt,
+        OffsetDateTime estimatedPickupAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         OffsetDateTime finishedAt) {

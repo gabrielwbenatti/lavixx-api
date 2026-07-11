@@ -55,6 +55,14 @@ public class ServiceOrder extends BaseEntity {
     @Column(name = "finished_at")
     private OffsetDateTime finishedAt;
 
+    /** Horario marcado com antecedencia para o cliente trazer o veiculo (status 'scheduled'). */
+    @Column(name = "scheduled_at")
+    private OffsetDateTime scheduledAt;
+
+    /** Horario que o cliente informou que vira buscar o veiculo (independe do status). */
+    @Column(name = "estimated_pickup_at")
+    private OffsetDateTime estimatedPickupAt;
+
     /** Observacoes livres da OS (ex.: avarias, pedidos do cliente). */
     @Column(name = "observations", length = 1000)
     private String observations;

@@ -1,5 +1,6 @@
 package com.benattidev.lavixx.dto.serviceorder;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,5 +16,8 @@ public record ServiceOrderRequest(
         List<ServiceOrderItemRequest> items,
 
         @Size(max = 1000, message = "Observacoes muito longas (max 1000)")
-        String observations) {
+        String observations,
+
+        /** Se informado, a OS nasce com status 'scheduled' em vez de 'waiting'. */
+        OffsetDateTime scheduledAt) {
 }

@@ -26,4 +26,10 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, UUID
             UUID tenantId, ServiceStatus status, OffsetDateTime from, OffsetDateTime to);
 
     long countByTenantIdAndCustomerIdAndStatus(UUID tenantId, UUID customerId, ServiceStatus status);
+
+    List<ServiceOrder> findAllByTenantIdAndStatusAndScheduledAtBetweenOrderByScheduledAtAsc(
+            UUID tenantId, ServiceStatus status, OffsetDateTime from, OffsetDateTime to);
+
+    List<ServiceOrder> findAllByTenantIdAndEstimatedPickupAtBetweenOrderByEstimatedPickupAtAsc(
+            UUID tenantId, OffsetDateTime from, OffsetDateTime to);
 }

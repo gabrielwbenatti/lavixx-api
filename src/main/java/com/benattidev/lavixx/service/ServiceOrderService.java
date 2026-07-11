@@ -46,11 +46,15 @@ import lombok.RequiredArgsConstructor;
 public class ServiceOrderService {
 
     private static final Map<ServiceStatus, Set<ServiceStatus>> VALID_TRANSITIONS = Map.of(
+            ServiceStatus.scheduled,   Set.of(ServiceStatus.waiting, ServiceStatus.cancelled),
             ServiceStatus.waiting,     Set.of(ServiceStatus.in_progress, ServiceStatus.cancelled),
             ServiceStatus.in_progress, Set.of(ServiceStatus.done, ServiceStatus.cancelled),
             ServiceStatus.done,        Set.of(),
             ServiceStatus.cancelled,   Set.of()
     );
+
+    private static final Set<ServiceStatus> DELETABLE_STATUSES =
+            Set.of(ServiceStatus.scheduled, ServiceStatus.waiting);
 
     private static final Set<ServiceStatus> EDITABLE_STATUSES =
             Set.of(ServiceStatus.waiting, ServiceStatus.in_progress);
@@ -153,11 +157,14 @@ public class ServiceOrderService {
                 ? tenant.getDefaultServiceTax()
                 : BigDecimal.ZERO;
 
+        boolean isScheduled = request.scheduledAt() != null;
+
         ServiceOrder order = ServiceOrder.builder()
                 .tenant(tenant)
                 .customer(vehicle.getCustomer())
                 .vehicle(vehicle)
-                .status(ServiceStatus.waiting)
+                .status(isScheduled ? ServiceStatus.scheduled : ServiceStatus.waiting)
+                .scheduledAt(request.scheduledAt())
                 .serviceTax(serviceTax)
                 .observations(normalizeObservations(request.observations()))
                 .build();
@@ -296,10 +303,48 @@ public class ServiceOrderService {
     @Transactional
     public void delete(UUID id) {
         ServiceOrder order = loadOwned(id);
-        if (order.getStatus() != ServiceStatus.waiting) {
-            throw new BusinessException("Apenas ordens com status 'waiting' podem ser removidas");
+        if (!DELETABLE_STATUSES.contains(order.getStatus())) {
+            throw new BusinessException("Apenas ordens agendadas ou com status 'waiting' podem ser removidas");
         }
         serviceOrderRepository.delete(order);
+    }
+
+    @Transactional
+    public ServiceOrderResponse updatePickupEstimate(UUID id, OffsetDateTime estimatedPickupAt) {
+        ServiceOrder order = loadOwned(id);
+        if (order.getStatus() == ServiceStatus.cancelled) {
+            throw new BusinessException("Nao e possivel definir previsao de retirada em uma ordem cancelada");
+        }
+        order.setEstimatedPickupAt(estimatedPickupAt);
+        return serviceOrderMapper.toResponse(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ServiceOrderResponse> listScheduled(OffsetDateTime from, OffsetDateTime to) {
+        UUID tenantId = SecurityUtils.currentTenantId();
+        List<ServiceOrder> orders = serviceOrderRepository
+                .findAllByTenantIdAndStatusAndScheduledAtBetweenOrderByScheduledAtAsc(
+                        tenantId, ServiceStatus.scheduled, from, to);
+        orders.forEach(o -> {
+            o.getCustomer().getId();
+            o.getVehicle().getId();
+        });
+        return orders.stream().map(serviceOrderMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ServiceOrderResponse> listPickupEstimates(OffsetDateTime from, OffsetDateTime to) {
+        UUID tenantId = SecurityUtils.currentTenantId();
+        List<ServiceOrder> orders = serviceOrderRepository
+                .findAllByTenantIdAndEstimatedPickupAtBetweenOrderByEstimatedPickupAtAsc(tenantId, from, to);
+        orders.forEach(o -> {
+            o.getCustomer().getId();
+            o.getVehicle().getId();
+        });
+        return orders.stream()
+                .filter(o -> o.getStatus() != ServiceStatus.cancelled)
+                .map(serviceOrderMapper::toResponse)
+                .toList();
     }
 
     @Transactional
