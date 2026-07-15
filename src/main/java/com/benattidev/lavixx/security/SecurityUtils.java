@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.benattidev.lavixx.entity.enums.UserRole;
 import com.benattidev.lavixx.exception.BusinessException;
 
 public final class SecurityUtils {
@@ -26,5 +27,9 @@ public final class SecurityUtils {
 
     public static UUID currentUserId() {
         return currentUser().getUserId();
+    }
+
+    public static boolean isAdmin() {
+        return currentUser().getRole() == UserRole.admin;
     }
 }

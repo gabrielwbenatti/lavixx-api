@@ -65,6 +65,7 @@ public class ServiceOrderMapper {
                 order.getObservations(),
                 order.getScheduledAt(),
                 order.getEstimatedPickupAt(),
+                order.getIssuedAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 order.getFinishedAt());

@@ -55,6 +55,14 @@ public class ServiceOrder extends BaseEntity {
     @Column(name = "finished_at")
     private OffsetDateTime finishedAt;
 
+    /**
+     * Data de emissao da OS (regra de negocio: aparece nas telas, filtros e
+     * relatorios). Editavel por admin, ao contrario de createdAt (auditoria,
+     * gerenciado pelo BaseEntity e nunca alterado).
+     */
+    @Column(name = "issued_at", nullable = false)
+    private OffsetDateTime issuedAt;
+
     /** Horario marcado com antecedencia para o cliente trazer o veiculo (status 'scheduled'). */
     @Column(name = "scheduled_at")
     private OffsetDateTime scheduledAt;

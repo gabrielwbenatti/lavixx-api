@@ -109,8 +109,8 @@ public class ServiceOrderService {
 
     private boolean filterByDateRange(ServiceOrder order, OffsetDateTime fromDate, OffsetDateTime toDate) {
         if (fromDate == null && toDate == null) return true;
-        if (fromDate != null && order.getCreatedAt().isBefore(fromDate)) return false;
-        if (toDate != null && order.getCreatedAt().isAfter(toDate)) return false;
+        if (fromDate != null && order.getIssuedAt().isBefore(fromDate)) return false;
+        if (toDate != null && order.getIssuedAt().isAfter(toDate)) return false;
         return true;
     }
 
@@ -165,6 +165,7 @@ public class ServiceOrderService {
                 .vehicle(vehicle)
                 .status(isScheduled ? ServiceStatus.scheduled : ServiceStatus.waiting)
                 .scheduledAt(request.scheduledAt())
+                .issuedAt(OffsetDateTime.now())
                 .serviceTax(serviceTax)
                 .observations(normalizeObservations(request.observations()))
                 .build();
@@ -309,6 +310,45 @@ public class ServiceOrderService {
         serviceOrderRepository.delete(order);
     }
 
+    /** Corrige a data de emissao da OS (uso administrativo: lancamento retroativo). */
+    @Transactional
+    public ServiceOrderResponse updateIssuedAt(UUID id, OffsetDateTime issuedAt) {
+        ServiceOrder order = loadOwned(id);
+        if (order.getFinishedAt() != null && issuedAt.isAfter(order.getFinishedAt())) {
+            throw new BusinessException("A data de emissao nao pode ser posterior a data de finalizacao");
+        }
+        order.setIssuedAt(issuedAt);
+        return serviceOrderMapper.toResponse(order);
+    }
+
+    /** Corrige a data de finalizacao de uma OS ja concluida/cancelada (uso administrativo). */
+    @Transactional
+    public ServiceOrderResponse updateFinishedAt(UUID id, OffsetDateTime finishedAt) {
+        ServiceOrder order = loadOwned(id);
+        if (order.getFinishedAt() == null) {
+            throw new BusinessException("Esta ordem ainda nao foi finalizada");
+        }
+        if (finishedAt.isBefore(order.getIssuedAt())) {
+            throw new BusinessException("A data de finalizacao nao pode ser anterior a data de emissao");
+        }
+        order.setFinishedAt(finishedAt);
+        return serviceOrderMapper.toResponse(order);
+    }
+
+    /** Corrige a data de um pagamento ja registrado (uso administrativo). */
+    @Transactional
+    public ServiceOrderResponse updatePaymentDate(UUID orderId, UUID paymentId, OffsetDateTime paidAt) {
+        UUID tenantId = SecurityUtils.currentTenantId();
+        ServiceOrder order = loadOwned(orderId);
+        Payment payment = paymentRepository.findByIdAndTenantId(paymentId, tenantId)
+                .orElseThrow(() -> new NotFoundException("Pagamento nao encontrado"));
+        if (!payment.getServiceOrder().getId().equals(orderId)) {
+            throw new NotFoundException("Pagamento nao encontrado");
+        }
+        payment.setPaidAt(paidAt);
+        return serviceOrderMapper.toResponse(order);
+    }
+
     @Transactional
     public ServiceOrderResponse updatePickupEstimate(UUID id, OffsetDateTime estimatedPickupAt) {
         ServiceOrder order = loadOwned(id);
@@ -358,13 +398,17 @@ public class ServiceOrderService {
                 .findByIdAndTenantId(request.paymentMethodId(), tenantId)
                 .orElseThrow(() -> new NotFoundException("Forma de pagamento nao encontrada"));
 
+        OffsetDateTime paidAt = request.paidAt() != null && SecurityUtils.isAdmin()
+                ? request.paidAt()
+                : OffsetDateTime.now();
+
         Payment payment = Payment.builder()
                 .tenant(order.getTenant())
                 .serviceOrder(order)
                 .paymentMethod(method)
                 .methodName(method.getName())
                 .amount(request.amount())
-                .paidAt(OffsetDateTime.now())
+                .paidAt(paidAt)
                 .build();
         order.getPayments().add(payment);
         return serviceOrderMapper.toResponse(order);

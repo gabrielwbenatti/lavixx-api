@@ -27,6 +27,7 @@ public record ServiceOrderResponse(
         String observations,
         OffsetDateTime scheduledAt,
         OffsetDateTime estimatedPickupAt,
+        OffsetDateTime issuedAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         OffsetDateTime finishedAt) {

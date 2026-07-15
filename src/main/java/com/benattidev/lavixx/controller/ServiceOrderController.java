@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -17,10 +18,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.benattidev.lavixx.dto.payment.PaymentRequest;
+import com.benattidev.lavixx.dto.payment.UpdatePaymentDateRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
+import com.benattidev.lavixx.dto.serviceorder.UpdateFinishedAtRequest;
+import com.benattidev.lavixx.dto.serviceorder.UpdateIssuedAtRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateObservationsRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdatePickupEstimateRequest;
@@ -122,6 +126,34 @@ public class ServiceOrderController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdatePickupEstimateRequest request) {
         return ResponseEntity.ok(serviceOrderService.updatePickupEstimate(id, request.estimatedPickupAt()));
+    }
+
+    /** Uso administrativo: corrige a data de emissao (ex.: lancamento retroativo de OS antigas). */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/issued-at")
+    public ResponseEntity<ServiceOrderResponse> updateIssuedAt(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateIssuedAtRequest request) {
+        return ResponseEntity.ok(serviceOrderService.updateIssuedAt(id, request.issuedAt()));
+    }
+
+    /** Uso administrativo: corrige a data de finalizacao de uma OS ja concluida/cancelada. */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/finished-at")
+    public ResponseEntity<ServiceOrderResponse> updateFinishedAt(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateFinishedAtRequest request) {
+        return ResponseEntity.ok(serviceOrderService.updateFinishedAt(id, request.finishedAt()));
+    }
+
+    /** Uso administrativo: corrige a data de um pagamento ja registrado. */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/payments/{paymentId}/date")
+    public ResponseEntity<ServiceOrderResponse> updatePaymentDate(
+            @PathVariable UUID id,
+            @PathVariable UUID paymentId,
+            @Valid @RequestBody UpdatePaymentDateRequest request) {
+        return ResponseEntity.ok(serviceOrderService.updatePaymentDate(id, paymentId, request.paidAt()));
     }
 
     @PostMapping("/{id}/loyalty-redeem")
