@@ -28,6 +28,7 @@ import com.benattidev.lavixx.dto.serviceorder.UpdateIssuedAtRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateObservationsRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdatePickupEstimateRequest;
+import com.benattidev.lavixx.dto.serviceorder.UpdateScheduledAtRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateStatusRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateTaxRequest;
 import com.benattidev.lavixx.entity.enums.ServiceStatus;
@@ -119,6 +120,13 @@ public class ServiceOrderController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateObservationsRequest request) {
         return ResponseEntity.ok(serviceOrderService.updateObservations(id, request.observations()));
+    }
+
+    @PatchMapping("/{id}/scheduled-at")
+    public ResponseEntity<ServiceOrderResponse> updateScheduledAt(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateScheduledAtRequest request) {
+        return ResponseEntity.ok(serviceOrderService.updateScheduledAt(id, request.scheduledAt()));
     }
 
     @PatchMapping("/{id}/pickup-estimate")

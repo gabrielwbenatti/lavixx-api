@@ -349,6 +349,18 @@ public class ServiceOrderService {
         return serviceOrderMapper.toResponse(order);
     }
 
+    /** Reagenda uma OS ainda nao chegada (cliente pediu para mudar o horario, ou lancamento errado). */
+    @Transactional
+    public ServiceOrderResponse updateScheduledAt(UUID id, OffsetDateTime scheduledAt) {
+        ServiceOrder order = loadOwned(id);
+        if (order.getStatus() != ServiceStatus.scheduled) {
+            throw new BusinessException(
+                    "Somente ordens agendadas (aguardando chegada) podem ter o agendamento alterado");
+        }
+        order.setScheduledAt(scheduledAt);
+        return serviceOrderMapper.toResponse(order);
+    }
+
     @Transactional
     public ServiceOrderResponse updatePickupEstimate(UUID id, OffsetDateTime estimatedPickupAt) {
         ServiceOrder order = loadOwned(id);
