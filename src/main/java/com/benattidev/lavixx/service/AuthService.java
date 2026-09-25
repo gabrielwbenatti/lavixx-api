@@ -42,6 +42,7 @@ public class AuthService {
                 token,
                 user.getId(),
                 user.getTenant().getId(),
+                user.getTenant().getName(),
                 user.getEmail(),
                 user.getRole().name());
     }
@@ -70,6 +71,7 @@ public class AuthService {
                 token,
                 user.getId(),
                 user.getTenant().getId(),
+                user.getTenant().getName(),
                 user.getEmail(),
                 user.getRole().name());
     }
