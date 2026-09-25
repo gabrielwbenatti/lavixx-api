@@ -2,19 +2,26 @@ package com.benattidev.lavixx.service;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.benattidev.lavixx.dto.common.PageResponse;
 import com.benattidev.lavixx.dto.payment.PaymentRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderRequest;
+import com.benattidev.lavixx.dto.serviceorder.ServiceOrderFilter;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
+import com.benattidev.lavixx.dto.serviceorder.ServiceOrderStatsResponse;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
 import com.benattidev.lavixx.dto.loyalty.LoyaltyStatusResponse;
 import com.benattidev.lavixx.entity.Customer;
@@ -39,6 +46,8 @@ import com.benattidev.lavixx.repository.TenantRepository;
 import com.benattidev.lavixx.repository.VehicleRepository;
 import com.benattidev.lavixx.security.SecurityUtils;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -69,74 +78,119 @@ public class ServiceOrderService {
     private final TenantRepository tenantRepository;
     private final LoyaltyService loyaltyService;
     private final ServiceOrderMapper serviceOrderMapper;
+    private final EntityManager entityManager;
 
+    /**
+     * Total da OS calculado no banco, com a mesma formula do ServiceOrderMapper:
+     * base = subtotal - round(subtotal * fidelidade% / 100, 2); total = base + round(base * taxa% / 100, 2).
+     */
+    private static final String SUBTOTAL_JPQL =
+            "(select coalesce(sum((i.unitPrice - i.discount) * i.quantity), 0) "
+                    + "from ServiceOrderItem i where i.serviceOrder = o)";
+    private static final String BASE_JPQL =
+            "(" + SUBTOTAL_JPQL + " - round(" + SUBTOTAL_JPQL + " * coalesce(o.loyaltyRewardPercent, 0) / 100, 2))";
+    private static final String TOTAL_JPQL =
+            "(" + BASE_JPQL + " + round(" + BASE_JPQL + " * coalesce(o.serviceTax, 0) / 100, 2))";
+
+    /** Listagem paginada; todos os filtros sao aplicados no banco. Mais recentes primeiro. */
     @Transactional(readOnly = true)
-    public List<ServiceOrderResponse> list(
-            ServiceStatus status,
-            UUID customerId,
-            UUID vehicleId,
-            OffsetDateTime fromDate,
-            OffsetDateTime toDate,
-            BigDecimal minAmount,
-            BigDecimal maxAmount) {
-        UUID tenantId = SecurityUtils.currentTenantId();
-        List<ServiceOrder> orders;
+    public PageResponse<ServiceOrderResponse> list(ServiceOrderFilter filter, Pageable pageable) {
+        OrderWhere where = buildWhere(filter);
 
-        if (customerId != null) {
-            orders = serviceOrderRepository.findAllByTenantIdAndCustomerId(tenantId, customerId);
-        } else if (vehicleId != null) {
-            orders = serviceOrderRepository.findAllByTenantIdAndVehicleId(tenantId, vehicleId);
-        } else if (status != null) {
-            orders = serviceOrderRepository.findAllByTenantIdAndStatus(tenantId, status);
-        } else {
-            orders = serviceOrderRepository.findAllByTenantId(tenantId);
+        TypedQuery<Long> countQuery = entityManager.createQuery(
+                "select count(o) from ServiceOrder o" + where.jpql(), Long.class);
+        // Cliente e veiculo vem no mesmo SELECT; itens e pagamentos sao carregados em lote
+        // (hibernate.default_batch_fetch_size), evitando uma consulta por ordem.
+        TypedQuery<ServiceOrder> contentQuery = entityManager.createQuery(
+                "select o from ServiceOrder o join fetch o.customer join fetch o.vehicle" + where.jpql()
+                        + " order by o.issuedAt desc, o.createdAt desc",
+                ServiceOrder.class);
+        where.bind(countQuery);
+        where.bind(contentQuery);
+
+        List<ServiceOrder> orders = contentQuery
+                .setFirstResult((int) pageable.getOffset())
+                .setMaxResults(pageable.getPageSize())
+                .getResultList();
+        Page<ServiceOrder> page = new PageImpl<>(orders, pageable, countQuery.getSingleResult());
+        return PageResponse.of(page, serviceOrderMapper::toResponse);
+    }
+
+    /** Totais das ordens que atendem ao filtro, calculados no banco. */
+    @Transactional(readOnly = true)
+    public ServiceOrderStatsResponse stats(ServiceOrderFilter filter) {
+        OrderWhere where = buildWhere(filter);
+
+        TypedQuery<Object[]> countsQuery = entityManager.createQuery(
+                "select count(o), coalesce(sum(case when o.status = :done then 1 else 0 end), 0)"
+                        + " from ServiceOrder o" + where.jpql(),
+                Object[].class);
+        where.bind(countsQuery);
+        countsQuery.setParameter("done", ServiceStatus.done);
+        Object[] counts = countsQuery.getSingleResult();
+
+        TypedQuery<BigDecimal> paidQuery = entityManager.createQuery(
+                "select coalesce(sum(p.amount), 0) from Payment p join p.serviceOrder o"
+                        + where.jpql() + " and o.status = :done",
+                BigDecimal.class);
+        where.bind(paidQuery);
+        paidQuery.setParameter("done", ServiceStatus.done);
+
+        return new ServiceOrderStatsResponse(
+                ((Number) counts[0]).longValue(),
+                ((Number) counts[1]).longValue(),
+                paidQuery.getSingleResult());
+    }
+
+    /** Clausula WHERE (alias `o`) e seus parametros; sempre restrita ao tenant atual. */
+    private record OrderWhere(String jpql, Map<String, Object> params) {
+        void bind(TypedQuery<?> query) {
+            params.forEach(query::setParameter);
         }
-
-        // Força carregamento dos relacionamentos lazy
-        orders.forEach(o -> {
-            o.getCustomer().getId();
-            o.getVehicle().getId();
-            o.getItems().size();
-            o.getPayments().size();
-        });
-
-        return orders.stream()
-                .filter(o -> filterByDateRange(o, fromDate, toDate))
-                .filter(o -> filterByAmount(o, minAmount, maxAmount))
-                .map(serviceOrderMapper::toResponse)
-                .toList();
     }
 
-    private boolean filterByDateRange(ServiceOrder order, OffsetDateTime fromDate, OffsetDateTime toDate) {
-        if (fromDate == null && toDate == null) return true;
-        if (fromDate != null && order.getIssuedAt().isBefore(fromDate)) return false;
-        if (toDate != null && order.getIssuedAt().isAfter(toDate)) return false;
-        return true;
-    }
+    private OrderWhere buildWhere(ServiceOrderFilter filter) {
+        StringBuilder where = new StringBuilder(" where o.tenant.id = :tenantId");
+        Map<String, Object> params = new HashMap<>();
+        params.put("tenantId", SecurityUtils.currentTenantId());
 
-    private boolean filterByAmount(ServiceOrder order, BigDecimal minAmount, BigDecimal maxAmount) {
-        if (minAmount == null && maxAmount == null) return true;
-
-        BigDecimal subtotal = order.getItems().stream()
-                .map(item -> item.getUnitPrice()
-                        .subtract(item.getDiscount())
-                        .multiply(BigDecimal.valueOf(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal loyaltyPct = order.getLoyaltyRewardPercent() != null
-                ? order.getLoyaltyRewardPercent() : BigDecimal.ZERO;
-        BigDecimal base = subtotal.subtract(subtotal
-                .multiply(loyaltyPct)
-                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP));
-
-        BigDecimal taxRate = order.getServiceTax() != null ? order.getServiceTax() : BigDecimal.ZERO;
-        BigDecimal total = base.add(base
-                .multiply(taxRate)
-                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP));
-
-        if (minAmount != null && total.compareTo(minAmount) < 0) return false;
-        if (maxAmount != null && total.compareTo(maxAmount) > 0) return false;
-        return true;
+        if (filter.status() != null) {
+            where.append(" and o.status = :status");
+            params.put("status", filter.status());
+        }
+        if (filter.customerId() != null) {
+            where.append(" and o.customer.id = :customerId");
+            params.put("customerId", filter.customerId());
+        }
+        if (filter.vehicleId() != null) {
+            where.append(" and o.vehicle.id = :vehicleId");
+            params.put("vehicleId", filter.vehicleId());
+        }
+        if (filter.fromDate() != null) {
+            where.append(" and o.issuedAt >= :fromDate");
+            params.put("fromDate", filter.fromDate());
+        }
+        if (filter.toDate() != null) {
+            where.append(" and o.issuedAt <= :toDate");
+            params.put("toDate", filter.toDate());
+        }
+        if (filter.finishedFrom() != null) {
+            where.append(" and o.finishedAt >= :finishedFrom");
+            params.put("finishedFrom", filter.finishedFrom());
+        }
+        if (filter.finishedTo() != null) {
+            where.append(" and o.finishedAt <= :finishedTo");
+            params.put("finishedTo", filter.finishedTo());
+        }
+        if (filter.minAmount() != null) {
+            where.append(" and ").append(TOTAL_JPQL).append(" >= :minAmount");
+            params.put("minAmount", filter.minAmount());
+        }
+        if (filter.maxAmount() != null) {
+            where.append(" and ").append(TOTAL_JPQL).append(" <= :maxAmount");
+            params.put("maxAmount", filter.maxAmount());
+        }
+        return new OrderWhere(where.toString(), params);
     }
 
     @Transactional(readOnly = true)

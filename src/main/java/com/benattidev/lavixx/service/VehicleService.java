@@ -1,12 +1,15 @@
 package com.benattidev.lavixx.service;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.benattidev.lavixx.dto.common.PageParams;
+import com.benattidev.lavixx.dto.common.PageResponse;
 import com.benattidev.lavixx.dto.vehicle.VehicleRequest;
 import com.benattidev.lavixx.dto.vehicle.VehicleResponse;
 import com.benattidev.lavixx.entity.Customer;
@@ -35,11 +38,24 @@ public class VehicleService {
     private final VehicleMapper vehicleMapper;
     private final EntityManager entityManager;
 
+    /**
+     * Listagem paginada. `search` busca por placa, apelido, fabricante, modelo, identificador
+     * ou nome do cliente; `customerId` restringe aos veiculos de um cliente.
+     */
     @Transactional(readOnly = true)
-    public List<VehicleResponse> list() {
-        return vehicleRepository.findAllByTenantId(SecurityUtils.currentTenantId()).stream()
-                .map(vehicleMapper::toResponse)
-                .toList();
+    public PageResponse<VehicleResponse> list(String search, UUID customerId, Pageable pageable) {
+        UUID tenantId = SecurityUtils.currentTenantId();
+        String term = PageParams.search(search);
+        Page<Vehicle> page;
+        if (customerId != null) {
+            page = vehicleRepository.findPageByTenantIdAndCustomerId(tenantId, customerId, pageable);
+        } else if (term != null) {
+            page = vehicleRepository.search(tenantId, PageParams.likePattern(term),
+                    PageParams.platePattern(term), pageable);
+        } else {
+            page = vehicleRepository.findPageByTenantId(tenantId, pageable);
+        }
+        return PageResponse.of(page, vehicleMapper::toResponse);
     }
 
     @Transactional(readOnly = true)

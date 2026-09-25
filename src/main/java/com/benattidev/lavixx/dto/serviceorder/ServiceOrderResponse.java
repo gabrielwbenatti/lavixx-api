@@ -5,7 +5,9 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.benattidev.lavixx.dto.customer.CustomerSummary;
 import com.benattidev.lavixx.dto.payment.PaymentResponse;
+import com.benattidev.lavixx.dto.vehicle.VehicleSummary;
 import com.benattidev.lavixx.entity.enums.PaymentStatus;
 import com.benattidev.lavixx.entity.enums.ServiceStatus;
 
@@ -13,6 +15,8 @@ public record ServiceOrderResponse(
         UUID id,
         UUID customerId,
         UUID vehicleId,
+        CustomerSummary customer,
+        VehicleSummary vehicle,
         ServiceStatus status,
         List<ServiceOrderItemResponse> items,
         BigDecimal subtotal,

@@ -6,16 +6,23 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
+import com.benattidev.lavixx.dto.customer.CustomerSummary;
 import com.benattidev.lavixx.dto.payment.PaymentResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
+import com.benattidev.lavixx.entity.Customer;
 import com.benattidev.lavixx.entity.Payment;
 import com.benattidev.lavixx.entity.ServiceOrder;
 import com.benattidev.lavixx.entity.ServiceOrderItem;
 import com.benattidev.lavixx.entity.enums.PaymentStatus;
 
+import lombok.RequiredArgsConstructor;
+
 @Component
+@RequiredArgsConstructor
 public class ServiceOrderMapper {
+
+    private final VehicleMapper vehicleMapper;
 
     public ServiceOrderResponse toResponse(ServiceOrder order) {
         List<ServiceOrderItemResponse> items = order.getItems().stream()
@@ -51,6 +58,8 @@ public class ServiceOrderMapper {
                 order.getId(),
                 order.getCustomer().getId(),
                 order.getVehicle().getId(),
+                toCustomerSummary(order.getCustomer()),
+                vehicleMapper.toSummary(order.getVehicle()),
                 order.getStatus(),
                 items,
                 subtotal,
@@ -69,6 +78,10 @@ public class ServiceOrderMapper {
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 order.getFinishedAt());
+    }
+
+    private CustomerSummary toCustomerSummary(Customer customer) {
+        return new CustomerSummary(customer.getId(), customer.getName(), customer.getDocument(), customer.getPhone());
     }
 
     public ServiceOrderItemResponse toItemResponse(ServiceOrderItem item) {

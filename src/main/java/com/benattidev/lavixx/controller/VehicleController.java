@@ -1,6 +1,5 @@
 package com.benattidev.lavixx.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -12,8 +11,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.benattidev.lavixx.dto.common.PageParams;
+import com.benattidev.lavixx.dto.common.PageResponse;
 import com.benattidev.lavixx.dto.vehicle.VehicleRequest;
 import com.benattidev.lavixx.dto.vehicle.VehicleResponse;
 import com.benattidev.lavixx.service.VehicleService;
@@ -29,8 +31,12 @@ public class VehicleController {
     private final VehicleService vehicleService;
 
     @GetMapping
-    public ResponseEntity<List<VehicleResponse>> list() {
-        return ResponseEntity.ok(vehicleService.list());
+    public ResponseEntity<PageResponse<VehicleResponse>> list(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(vehicleService.list(search, customerId, PageParams.of(page, size)));
     }
 
     @GetMapping("/{id}")

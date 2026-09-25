@@ -1,11 +1,14 @@
 package com.benattidev.lavixx.service;
 
-import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.benattidev.lavixx.dto.common.PageParams;
+import com.benattidev.lavixx.dto.common.PageResponse;
 import com.benattidev.lavixx.dto.customer.CustomerRequest;
 import com.benattidev.lavixx.dto.customer.CustomerResponse;
 import com.benattidev.lavixx.entity.Customer;
@@ -26,12 +29,16 @@ public class CustomerService {
     private final CustomerMapper customerMapper;
     private final EntityManager entityManager;
 
+    /** Listagem paginada, ordenada por nome. `search` busca por nome, documento ou telefone. */
     @Transactional(readOnly = true)
-    public List<CustomerResponse> list() {
+    public PageResponse<CustomerResponse> list(String search, Pageable pageable) {
         UUID tenantId = SecurityUtils.currentTenantId();
-        return customerRepository.findAllByTenantId(tenantId).stream()
-                .map(customerMapper::toResponse)
-                .toList();
+        String term = PageParams.search(search);
+        Page<Customer> page = term == null
+                ? customerRepository.findPageByTenantId(tenantId, pageable)
+                : customerRepository.search(tenantId, PageParams.likePattern(term),
+                        PageParams.digitsPattern(term), pageable);
+        return PageResponse.of(page, customerMapper::toResponse);
     }
 
     @Transactional(readOnly = true)

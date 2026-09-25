@@ -1,6 +1,5 @@
 package com.benattidev.lavixx.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -12,8 +11,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.benattidev.lavixx.dto.common.PageParams;
+import com.benattidev.lavixx.dto.common.PageResponse;
 import com.benattidev.lavixx.dto.customer.CustomerRequest;
 import com.benattidev.lavixx.dto.customer.CustomerResponse;
 import com.benattidev.lavixx.dto.loyalty.LoyaltyStatusResponse;
@@ -32,8 +34,11 @@ public class CustomerController {
     private final LoyaltyService loyaltyService;
 
     @GetMapping
-    public ResponseEntity<List<CustomerResponse>> list() {
-        return ResponseEntity.ok(customerService.list());
+    public ResponseEntity<PageResponse<CustomerResponse>> list(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(customerService.list(search, PageParams.of(page, size)));
     }
 
     @GetMapping("/{id}/loyalty")

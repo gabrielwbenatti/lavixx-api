@@ -1,14 +1,12 @@
 package com.benattidev.lavixx.dto.vehicle;
 
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import com.benattidev.lavixx.entity.enums.VehicleType;
 
-public record VehicleResponse(
+/** Dados do veiculo embutidos em outras respostas (ex.: ordem de servico). */
+public record VehicleSummary(
         UUID id,
-        UUID customerId,
-        String customerName,
         VehicleType type,
         String plate,
         String identifier,
@@ -16,7 +14,5 @@ public record VehicleResponse(
         String manufacturer,
         String model,
         String color,
-        Short year,
-        OffsetDateTime createdAt,
-        OffsetDateTime updatedAt) {
+        Short year) {
 }

@@ -1,6 +1,7 @@
 package com.benattidev.lavixx.controller;
 
 import java.util.List;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -17,12 +18,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.benattidev.lavixx.dto.common.PageParams;
+import com.benattidev.lavixx.dto.common.PageResponse;
 import com.benattidev.lavixx.dto.payment.PaymentRequest;
 import com.benattidev.lavixx.dto.payment.UpdatePaymentDateRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemRequest;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderRequest;
+import com.benattidev.lavixx.dto.serviceorder.ServiceOrderFilter;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
+import com.benattidev.lavixx.dto.serviceorder.ServiceOrderStatsResponse;
 import com.benattidev.lavixx.dto.serviceorder.UpdateFinishedAtRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateIssuedAtRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
@@ -45,16 +50,40 @@ public class ServiceOrderController {
     private final ServiceOrderService serviceOrderService;
 
     @GetMapping
-    public ResponseEntity<List<ServiceOrderResponse>> list(
+    public ResponseEntity<PageResponse<ServiceOrderResponse>> list(
             @RequestParam(required = false) ServiceStatus status,
             @RequestParam(required = false) UUID customerId,
             @RequestParam(required = false) UUID vehicleId,
             @RequestParam(required = false) String fromDate,
             @RequestParam(required = false) String toDate,
-            @RequestParam(required = false) java.math.BigDecimal minAmount,
-            @RequestParam(required = false) java.math.BigDecimal maxAmount) {
-        return ResponseEntity.ok(serviceOrderService.list(status, customerId, vehicleId,
-                parseFrom(fromDate), parseTo(toDate), minAmount, maxAmount));
+            @RequestParam(required = false) String finishedFrom,
+            @RequestParam(required = false) String finishedTo,
+            @RequestParam(required = false) BigDecimal minAmount,
+            @RequestParam(required = false) BigDecimal maxAmount,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        ServiceOrderFilter filter = new ServiceOrderFilter(status, customerId, vehicleId,
+                parseFrom(fromDate), parseTo(toDate), parseFrom(finishedFrom), parseTo(finishedTo),
+                minAmount, maxAmount);
+        return ResponseEntity.ok(serviceOrderService.list(filter, PageParams.of(page, size)));
+    }
+
+    /** Totais das ordens que atendem aos mesmos filtros da listagem. */
+    @GetMapping("/stats")
+    public ResponseEntity<ServiceOrderStatsResponse> stats(
+            @RequestParam(required = false) ServiceStatus status,
+            @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) UUID vehicleId,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) String finishedFrom,
+            @RequestParam(required = false) String finishedTo,
+            @RequestParam(required = false) BigDecimal minAmount,
+            @RequestParam(required = false) BigDecimal maxAmount) {
+        ServiceOrderFilter filter = new ServiceOrderFilter(status, customerId, vehicleId,
+                parseFrom(fromDate), parseTo(toDate), parseFrom(finishedFrom), parseTo(finishedTo),
+                minAmount, maxAmount);
+        return ResponseEntity.ok(serviceOrderService.stats(filter));
     }
 
     @GetMapping("/schedule")
