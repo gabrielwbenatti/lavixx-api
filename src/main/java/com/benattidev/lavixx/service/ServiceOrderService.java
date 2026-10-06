@@ -334,10 +334,12 @@ public class ServiceOrderService {
         ServiceOrderItem item = loadOwnedItem(itemId, orderId, tenantId);
         validateEditable(item.getServiceOrder());
 
-        if (request.discount() != null) {
-            validateDiscount(item.getUnitPrice(), request.discount());
-            item.setDiscount(request.discount());
-        }
+        BigDecimal unitPrice = request.unitPrice() != null ? request.unitPrice() : item.getUnitPrice();
+        BigDecimal discount = request.discount() != null ? request.discount() : item.getDiscount();
+        // Revalida sempre: baixar o preco pode deixar o desconto existente maior que ele.
+        validateDiscount(unitPrice, discount);
+        item.setUnitPrice(unitPrice);
+        item.setDiscount(discount);
         if (request.quantity() != null) {
             item.setQuantity(request.quantity());
         }
