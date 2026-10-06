@@ -6,15 +6,20 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.benattidev.lavixx.dto.employee.EmployeeSummary;
+import com.benattidev.lavixx.dto.report.EmployeeTotal;
 import com.benattidev.lavixx.dto.report.ExpenseCategoryTotal;
 import com.benattidev.lavixx.dto.report.PaymentMethodTotal;
 import com.benattidev.lavixx.dto.report.ReportSummaryResponse;
@@ -130,6 +135,71 @@ public class ReportService {
                 profit,
                 byPaymentMethod,
                 byService,
-                byExpenseCategory);
+                byExpenseCategory,
+                byEmployee(completed));
+    }
+
+    /**
+     * Producao por funcionario: o valor final de cada item e dividido igualmente entre os
+     * funcionarios do item. Itens sem funcionario vao para a linha "Sem funcionario" (ultima),
+     * de modo que a soma das linhas bata com os itens do faturado (sem taxa de servico nem
+     * desconto de fidelidade, que sao da OS e nao do item).
+     */
+    private List<EmployeeTotal> byEmployee(List<ServiceOrderResponse> completed) {
+        Map<UUID, EmployeeAcc> perEmployee = new LinkedHashMap<>();
+        EmployeeAcc unassigned = new EmployeeAcc("Sem funcionario");
+
+        for (ServiceOrderResponse order : completed) {
+            for (ServiceOrderItemResponse item : order.items()) {
+                List<EmployeeSummary> team = item.employees();
+                if (team.isEmpty()) {
+                    unassigned.add(order.id(), item.quantity(), item.finalPrice());
+                    continue;
+                }
+                // Escala 4 para nao perder centavos na divisao; arredonda so no final.
+                BigDecimal share = item.finalPrice()
+                        .divide(BigDecimal.valueOf(team.size()), 4, RoundingMode.HALF_UP);
+                for (EmployeeSummary e : team) {
+                    perEmployee.computeIfAbsent(e.id(), k -> new EmployeeAcc(e.name()))
+                            .add(order.id(), item.quantity(), share);
+                }
+            }
+        }
+
+        List<EmployeeTotal> result = new ArrayList<>(perEmployee.entrySet().stream()
+                .map(e -> e.getValue().toTotal(e.getKey()))
+                .sorted(Comparator.comparing(EmployeeTotal::total).reversed())
+                .toList());
+        if (unassigned.hasData()) {
+            result.add(unassigned.toTotal(null));
+        }
+        return result;
+    }
+
+    /** Acumulador por funcionario. */
+    private static final class EmployeeAcc {
+        private final String name;
+        private final Set<UUID> orders = new HashSet<>();
+        private long quantity;
+        private BigDecimal total = BigDecimal.ZERO;
+
+        EmployeeAcc(String name) {
+            this.name = name;
+        }
+
+        void add(UUID orderId, Short itemQuantity, BigDecimal amount) {
+            orders.add(orderId);
+            quantity += itemQuantity;
+            total = total.add(amount);
+        }
+
+        boolean hasData() {
+            return !orders.isEmpty();
+        }
+
+        EmployeeTotal toTotal(UUID employeeId) {
+            return new EmployeeTotal(employeeId, name, orders.size(), quantity,
+                    total.setScale(2, RoundingMode.HALF_UP));
+        }
     }
 }

@@ -16,5 +16,6 @@ public record ReportSummaryResponse(
         BigDecimal profit,        // lucro (caixa): recebido - despesas
         List<PaymentMethodTotal> byPaymentMethod,
         List<ServiceTotal> byService,
-        List<ExpenseCategoryTotal> byExpenseCategory) {
+        List<ExpenseCategoryTotal> byExpenseCategory,
+        List<EmployeeTotal> byEmployee) {   // producao por funcionario (OS concluidas no periodo)
 }
