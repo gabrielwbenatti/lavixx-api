@@ -13,8 +13,22 @@ public record ServiceRequest(
         @Size(max = 150)
         String name,
 
+        /** Preco padrao: vale quando nao ha preco especifico para o porte do veiculo. */
         @NotNull(message = "Preco e obrigatorio")
         @DecimalMin(value = "0.00", inclusive = true, message = "Preco nao pode ser negativo")
         @Digits(integer = 8, fraction = 2)
-        BigDecimal price) {
+        BigDecimal price,
+
+        /** Precos por porte (opcionais). Em branco = usa o preco padrao. */
+        @DecimalMin(value = "0.00", message = "Preco nao pode ser negativo")
+        @Digits(integer = 8, fraction = 2)
+        BigDecimal priceSmall,
+
+        @DecimalMin(value = "0.00", message = "Preco nao pode ser negativo")
+        @Digits(integer = 8, fraction = 2)
+        BigDecimal priceMedium,
+
+        @DecimalMin(value = "0.00", message = "Preco nao pode ser negativo")
+        @Digits(integer = 8, fraction = 2)
+        BigDecimal priceLarge) {
 }

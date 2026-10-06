@@ -8,6 +8,9 @@ public record ServiceResponse(
         UUID id,
         String name,
         BigDecimal price,
+        BigDecimal priceSmall,
+        BigDecimal priceMedium,
+        BigDecimal priceLarge,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
 }

@@ -15,6 +15,7 @@ public class VehicleMapper {
                 vehicle.getCustomer().getId(),
                 vehicle.getCustomer().getName(),
                 vehicle.getType(),
+                vehicle.getSize(),
                 vehicle.getPlate(),
                 vehicle.getIdentifier(),
                 vehicle.getNickname(),
@@ -30,6 +31,7 @@ public class VehicleMapper {
         return new VehicleSummary(
                 vehicle.getId(),
                 vehicle.getType(),
+                vehicle.getSize(),
                 vehicle.getPlate(),
                 vehicle.getIdentifier(),
                 vehicle.getNickname(),

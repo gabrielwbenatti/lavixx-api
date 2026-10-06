@@ -3,6 +3,7 @@ package com.benattidev.lavixx.entity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.benattidev.lavixx.entity.enums.VehicleSize;
 import com.benattidev.lavixx.entity.enums.VehicleType;
 
 import jakarta.persistence.Column;
@@ -40,6 +41,12 @@ public class Vehicle extends BaseEntity {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "type", nullable = false, columnDefinition = "vehicle_type")
     private VehicleType type;
+
+    /** Porte (opcional): define o preco de tabela dos servicos. */
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "size", columnDefinition = "vehicle_size")
+    private VehicleSize size;
 
     @Column(name = "plate", length = 10)
     private String plate;

@@ -44,6 +44,9 @@ public class ServiceCatalogService {
                 .tenant(entityManager.getReference(Tenant.class, tenantId))
                 .name(request.name())
                 .price(request.price())
+                .priceSmall(request.priceSmall())
+                .priceMedium(request.priceMedium())
+                .priceLarge(request.priceLarge())
                 .build();
         return serviceMapper.toResponse(serviceRepository.save(service));
     }
@@ -53,6 +56,9 @@ public class ServiceCatalogService {
         com.benattidev.lavixx.entity.Service service = loadOwned(id);
         service.setName(request.name());
         service.setPrice(request.price());
+        service.setPriceSmall(request.priceSmall());
+        service.setPriceMedium(request.priceMedium());
+        service.setPriceLarge(request.priceLarge());
         return serviceMapper.toResponse(service);
     }
 

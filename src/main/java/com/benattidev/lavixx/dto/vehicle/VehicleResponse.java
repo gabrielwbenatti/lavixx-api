@@ -3,6 +3,7 @@ package com.benattidev.lavixx.dto.vehicle;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import com.benattidev.lavixx.entity.enums.VehicleSize;
 import com.benattidev.lavixx.entity.enums.VehicleType;
 
 public record VehicleResponse(
@@ -10,6 +11,7 @@ public record VehicleResponse(
         UUID customerId,
         String customerName,
         VehicleType type,
+        VehicleSize size,
         String plate,
         String identifier,
         String nickname,

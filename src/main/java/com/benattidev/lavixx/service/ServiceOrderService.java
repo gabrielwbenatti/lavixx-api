@@ -537,8 +537,10 @@ public class ServiceOrderService {
             com.benattidev.lavixx.entity.Service service =
                     serviceRepository.findByIdAndTenantId(request.serviceId(), tenantId)
                             .orElseThrow(() -> new NotFoundException("Servico nao encontrado"));
-            validateDiscount(service.getPrice(), discount);
-            builder.service(service).name(service.getName()).unitPrice(service.getPrice());
+            // Preco de tabela pelo porte do veiculo da OS (ou o padrao); fica gravado no item.
+            BigDecimal unitPrice = service.priceFor(order.getVehicle().getSize());
+            validateDiscount(unitPrice, discount);
+            builder.service(service).name(service.getName()).unitPrice(unitPrice);
         } else {
             Product product = productRepository.findByIdAndTenantId(request.productId(), tenantId)
                     .orElseThrow(() -> new NotFoundException("Produto nao encontrado"));

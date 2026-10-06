@@ -13,6 +13,9 @@ public class ServiceMapper {
                 service.getId(),
                 service.getName(),
                 service.getPrice(),
+                service.getPriceSmall(),
+                service.getPriceMedium(),
+                service.getPriceLarge(),
                 service.getCreatedAt(),
                 service.getUpdatedAt());
     }

@@ -3,6 +3,7 @@ package com.benattidev.lavixx.dto.vehicle;
 import java.util.Locale;
 import java.util.UUID;
 
+import com.benattidev.lavixx.entity.enums.VehicleSize;
 import com.benattidev.lavixx.entity.enums.VehicleType;
 
 import jakarta.validation.constraints.NotNull;
@@ -14,6 +15,9 @@ public record VehicleRequest(
 
         @NotNull(message = "Tipo de veiculo e obrigatorio")
         VehicleType type,
+
+        /** Porte do veiculo (opcional); define o preco de tabela dos servicos. */
+        VehicleSize size,
 
         @Size(max = 10)
         String plate,

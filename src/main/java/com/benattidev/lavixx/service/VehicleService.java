@@ -74,6 +74,7 @@ public class VehicleService {
                 .tenant(entityManager.getReference(Tenant.class, tenantId))
                 .customer(customer)
                 .type(request.type())
+                .size(request.size())
                 .plate(normalize(request.plate()))
                 .identifier(normalize(request.identifier()))
                 .nickname(normalize(request.nickname()))
@@ -98,6 +99,7 @@ public class VehicleService {
         }
 
         vehicle.setType(request.type());
+        vehicle.setSize(request.size());
         vehicle.setPlate(normalize(request.plate()));
         vehicle.setIdentifier(normalize(request.identifier()));
         vehicle.setNickname(normalize(request.nickname()));
