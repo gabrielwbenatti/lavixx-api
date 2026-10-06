@@ -10,9 +10,11 @@ import com.benattidev.lavixx.dto.employee.EmployeeRequest;
 import com.benattidev.lavixx.dto.employee.EmployeeResponse;
 import com.benattidev.lavixx.entity.Employee;
 import com.benattidev.lavixx.entity.Tenant;
+import com.benattidev.lavixx.exception.BusinessException;
 import com.benattidev.lavixx.exception.NotFoundException;
 import com.benattidev.lavixx.mapper.EmployeeMapper;
 import com.benattidev.lavixx.repository.EmployeeRepository;
+import com.benattidev.lavixx.repository.ServiceOrderItemRepository;
 import com.benattidev.lavixx.security.SecurityUtils;
 
 import jakarta.persistence.EntityManager;
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+    private final ServiceOrderItemRepository serviceOrderItemRepository;
     private final EmployeeMapper employeeMapper;
     private final EntityManager entityManager;
 
@@ -55,11 +58,14 @@ public class EmployeeService {
         return employeeMapper.toResponse(employee);
     }
 
-    // TODO: ao vincular funcionarios a itens da OS, bloquear a exclusao de quem ja foi
-    // usado (orientar a desativar), como em PaymentMethodService.delete.
     @Transactional
     public void delete(UUID id) {
-        employeeRepository.delete(loadOwned(id));
+        Employee employee = loadOwned(id);
+        if (serviceOrderItemRepository.existsByEmployeeId(id)) {
+            throw new BusinessException(
+                    "Este funcionario ja foi vinculado a servicos; desative-o em vez de excluir");
+        }
+        employeeRepository.delete(employee);
     }
 
     private Employee loadOwned(UUID id) {

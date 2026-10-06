@@ -1,6 +1,8 @@
 package com.benattidev.lavixx.dto.serviceorder;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -15,5 +17,8 @@ public record UpdateItemRequest(
         BigDecimal discount,
 
         @Min(value = 1, message = "Quantidade minima e 1")
-        Short quantity) {
+        Short quantity,
+
+        /** null = nao altera; lista vazia = remove todos os funcionarios do item. */
+        List<UUID> employeeIds) {
 }

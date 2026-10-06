@@ -3,6 +3,7 @@ package com.benattidev.lavixx.service;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +26,7 @@ import com.benattidev.lavixx.dto.serviceorder.ServiceOrderStatsResponse;
 import com.benattidev.lavixx.dto.serviceorder.UpdateItemRequest;
 import com.benattidev.lavixx.dto.loyalty.LoyaltyStatusResponse;
 import com.benattidev.lavixx.entity.Customer;
+import com.benattidev.lavixx.entity.Employee;
 import com.benattidev.lavixx.entity.Payment;
 import com.benattidev.lavixx.entity.PaymentMethod;
 import com.benattidev.lavixx.entity.Product;
@@ -36,6 +38,7 @@ import com.benattidev.lavixx.entity.enums.ServiceStatus;
 import com.benattidev.lavixx.exception.BusinessException;
 import com.benattidev.lavixx.exception.NotFoundException;
 import com.benattidev.lavixx.mapper.ServiceOrderMapper;
+import com.benattidev.lavixx.repository.EmployeeRepository;
 import com.benattidev.lavixx.repository.PaymentMethodRepository;
 import com.benattidev.lavixx.repository.PaymentRepository;
 import com.benattidev.lavixx.repository.ProductRepository;
@@ -73,6 +76,7 @@ public class ServiceOrderService {
     private final VehicleRepository vehicleRepository;
     private final ServiceRepository serviceRepository;
     private final ProductRepository productRepository;
+    private final EmployeeRepository employeeRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final PaymentRepository paymentRepository;
     private final TenantRepository tenantRepository;
@@ -343,6 +347,9 @@ public class ServiceOrderService {
         if (request.quantity() != null) {
             item.setQuantity(request.quantity());
         }
+        if (request.employeeIds() != null) {
+            item.setEmployees(resolveEmployees(request.employeeIds(), tenantId, item.getEmployees()));
+        }
 
         return serviceOrderMapper.toItemResponse(item);
     }
@@ -523,7 +530,8 @@ public class ServiceOrderService {
                 .tenant(order.getTenant())
                 .serviceOrder(order)
                 .discount(discount)
-                .quantity(quantity);
+                .quantity(quantity)
+                .employees(resolveEmployees(request.employeeIds(), tenantId, Set.of()));
 
         if (hasService) {
             com.benattidev.lavixx.entity.Service service =
@@ -539,6 +547,26 @@ public class ServiceOrderService {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Carrega os funcionarios do tenant. Inativos so podem ser mantidos se ja estavam no
+     * item ({@code current}); nao podem ser adicionados novos.
+     */
+    private Set<Employee> resolveEmployees(List<UUID> ids, UUID tenantId, Set<Employee> current) {
+        Set<Employee> result = new LinkedHashSet<>();
+        if (ids == null) {
+            return result;
+        }
+        for (UUID employeeId : new LinkedHashSet<>(ids)) {
+            Employee employee = employeeRepository.findByIdAndTenantId(employeeId, tenantId)
+                    .orElseThrow(() -> new NotFoundException("Funcionario nao encontrado"));
+            if (!employee.isActive() && !current.contains(employee)) {
+                throw new BusinessException("O funcionario '" + employee.getName() + "' esta inativo");
+            }
+            result.add(employee);
+        }
+        return result;
     }
 
     private void validateDiscount(BigDecimal unitPrice, BigDecimal discount) {

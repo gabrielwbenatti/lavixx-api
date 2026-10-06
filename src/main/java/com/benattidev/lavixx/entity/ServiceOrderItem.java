@@ -1,11 +1,15 @@
 package com.benattidev.lavixx.entity;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -50,4 +54,13 @@ public class ServiceOrderItem extends BaseEntity {
 
     @Column(name = "quantity", nullable = false)
     private Short quantity;
+
+    /** Funcionarios que executaram o item (divisao igual entre eles). */
+    @Builder.Default
+    @ManyToMany
+    @JoinTable(
+            name = "service_order_item_employees",
+            joinColumns = @JoinColumn(name = "service_order_item_id"),
+            inverseJoinColumns = @JoinColumn(name = "employee_id"))
+    private Set<Employee> employees = new LinkedHashSet<>();
 }

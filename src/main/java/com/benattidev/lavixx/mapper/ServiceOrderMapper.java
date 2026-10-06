@@ -2,15 +2,18 @@ package com.benattidev.lavixx.mapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
 
 import com.benattidev.lavixx.dto.customer.CustomerSummary;
+import com.benattidev.lavixx.dto.employee.EmployeeSummary;
 import com.benattidev.lavixx.dto.payment.PaymentResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
 import com.benattidev.lavixx.entity.Customer;
+import com.benattidev.lavixx.entity.Employee;
 import com.benattidev.lavixx.entity.Payment;
 import com.benattidev.lavixx.entity.ServiceOrder;
 import com.benattidev.lavixx.entity.ServiceOrderItem;
@@ -96,7 +99,11 @@ public class ServiceOrderMapper {
                 item.getUnitPrice(),
                 item.getDiscount(),
                 item.getQuantity(),
-                finalPrice);
+                finalPrice,
+                item.getEmployees().stream()
+                        .sorted(Comparator.comparing(Employee::getName, String.CASE_INSENSITIVE_ORDER))
+                        .map(e -> new EmployeeSummary(e.getId(), e.getName()))
+                        .toList());
     }
 
     public PaymentResponse toPaymentResponse(Payment payment) {
