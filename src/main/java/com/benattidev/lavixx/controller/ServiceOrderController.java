@@ -38,6 +38,7 @@ import com.benattidev.lavixx.dto.serviceorder.UpdateStatusRequest;
 import com.benattidev.lavixx.dto.serviceorder.UpdateTaxRequest;
 import com.benattidev.lavixx.entity.enums.ServiceStatus;
 import com.benattidev.lavixx.service.ServiceOrderService;
+import com.benattidev.lavixx.service.TenantTime;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ import lombok.RequiredArgsConstructor;
 public class ServiceOrderController {
 
     private final ServiceOrderService serviceOrderService;
+    private final TenantTime tenantTime;
 
     @GetMapping
     public ResponseEntity<PageResponse<ServiceOrderResponse>> list(
@@ -100,25 +102,29 @@ public class ServiceOrderController {
         return ResponseEntity.ok(serviceOrderService.listPickupEstimates(parseFrom(fromDate), parseTo(toDate)));
     }
 
-    private static java.time.OffsetDateTime parseFrom(String date) {
+    /**
+     * Aceita um instante completo (ISO com offset) ou so a data (yyyy-MM-dd); a data pura
+     * vale no fuso do estabelecimento, nao no do servidor.
+     */
+    private java.time.OffsetDateTime parseFrom(String date) {
         if (date == null || date.isEmpty()) {
             return null;
         }
         try {
             return java.time.OffsetDateTime.parse(date);
         } catch (Exception e) {
-            return java.time.LocalDate.parse(date).atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
+            return tenantTime.startOfDay(java.time.LocalDate.parse(date), tenantTime.zone());
         }
     }
 
-    private static java.time.OffsetDateTime parseTo(String date) {
+    private java.time.OffsetDateTime parseTo(String date) {
         if (date == null || date.isEmpty()) {
             return null;
         }
         try {
             return java.time.OffsetDateTime.parse(date);
         } catch (Exception e) {
-            return java.time.LocalDate.parse(date).atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime();
+            return tenantTime.endOfDay(java.time.LocalDate.parse(date), tenantTime.zone());
         }
     }
 

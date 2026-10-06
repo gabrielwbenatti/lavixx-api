@@ -24,6 +24,11 @@ public class Tenant extends BaseEntity {
     @Column(name = "document", nullable = false, length = 14, unique = true)
     private String document;
 
+    /** Fuso IANA do estabelecimento (ex.: America/Sao_Paulo); define onde o "dia" comeca e termina. */
+    @Builder.Default
+    @Column(name = "timezone", nullable = false, length = 50)
+    private String timezone = "America/Sao_Paulo";
+
     @Column(name = "operating_hours_start", length = 5)
     private String operatingHoursStart;
 

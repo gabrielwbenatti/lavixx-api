@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public record TenantUpdateRequest(
     String name,
+    String timezone,
     String operatingHoursStart,
     String operatingHoursEnd,
     BigDecimal defaultServiceTax,

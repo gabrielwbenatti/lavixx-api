@@ -7,6 +7,7 @@ public record TenantResponse(
     UUID id,
     String name,
     String document,
+    String timezone,
     String operatingHoursStart,
     String operatingHoursEnd,
     BigDecimal defaultServiceTax,

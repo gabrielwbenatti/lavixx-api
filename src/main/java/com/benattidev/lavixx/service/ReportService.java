@@ -3,7 +3,6 @@ package com.benattidev.lavixx.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -47,13 +46,15 @@ public class ReportService {
     private final PaymentRepository paymentRepository;
     private final ExpenseRepository expenseRepository;
     private final ServiceOrderMapper serviceOrderMapper;
+    private final TenantTime tenantTime;
 
     @Transactional(readOnly = true)
     public ReportSummaryResponse summary(LocalDate from, LocalDate to) {
         UUID tenantId = SecurityUtils.currentTenantId();
-        ZoneId zone = ZoneId.systemDefault();
-        OffsetDateTime start = from.atStartOfDay(zone).toOffsetDateTime();
-        OffsetDateTime end = to.atTime(LocalTime.MAX).atZone(zone).toOffsetDateTime();
+        // O periodo fecha no fuso do estabelecimento (o servidor pode estar em UTC).
+        ZoneId zone = tenantTime.zone();
+        OffsetDateTime start = tenantTime.startOfDay(from, zone);
+        OffsetDateTime end = tenantTime.endOfDay(to, zone);
 
         // Ordens concluidas no periodo (por data de finalizacao).
         List<ServiceOrderResponse> completed = serviceOrderRepository

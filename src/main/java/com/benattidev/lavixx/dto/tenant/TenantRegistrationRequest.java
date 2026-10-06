@@ -28,7 +28,11 @@ public record TenantRegistrationRequest(
 
         @NotBlank(message = "Senha e obrigatoria")
         @Size(min = 8, max = 100, message = "Senha deve ter entre 8 e 100 caracteres")
-        String adminPassword) {
+        String adminPassword,
+
+        // Fuso IANA (ex.: America/Sao_Paulo); opcional, invalido/vazio cai no padrao.
+        @Size(max = 50)
+        String timezone) {
 
     // Normaliza e-mail (trim + minusculas) e documento (alfanumerico em maiusculas) antes de validar/gravar.
     public TenantRegistrationRequest {

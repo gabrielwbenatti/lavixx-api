@@ -35,6 +35,7 @@ public class TenantRegistrationService {
         Tenant tenant = Tenant.builder()
                 .name(request.name())
                 .document(request.document())
+                .timezone(TenantTime.parseOrDefault(request.timezone()).getId())
                 .build();
         tenant = tenantRepository.save(tenant);
 

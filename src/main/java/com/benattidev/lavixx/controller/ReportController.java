@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.benattidev.lavixx.dto.report.ReportSummaryResponse;
 import com.benattidev.lavixx.service.ReportService;
+import com.benattidev.lavixx.service.TenantTime;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,12 +21,14 @@ import lombok.RequiredArgsConstructor;
 public class ReportController {
 
     private final ReportService reportService;
+    private final TenantTime tenantTime;
 
     @GetMapping("/summary")
     public ResponseEntity<ReportSummaryResponse> summary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        LocalDate today = LocalDate.now();
+        // "Hoje" no fuso do estabelecimento, nao no do servidor.
+        LocalDate today = tenantTime.today();
         LocalDate effectiveFrom = from != null ? from : today;
         LocalDate effectiveTo = to != null ? to : today;
         return ResponseEntity.ok(reportService.summary(effectiveFrom, effectiveTo));

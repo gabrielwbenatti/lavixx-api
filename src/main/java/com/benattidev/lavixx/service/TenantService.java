@@ -38,6 +38,9 @@ public class TenantService {
         if (request.name() != null) {
             tenant.setName(request.name());
         }
+        if (request.timezone() != null) {
+            tenant.setTimezone(TenantTime.parse(request.timezone()).getId());
+        }
         if (request.operatingHoursStart() != null) {
             tenant.setOperatingHoursStart(request.operatingHoursStart());
         }
@@ -75,6 +78,7 @@ public class TenantService {
                 tenant.getId(),
                 tenant.getName(),
                 tenant.getDocument(),
+                tenant.getTimezone(),
                 tenant.getOperatingHoursStart(),
                 tenant.getOperatingHoursEnd(),
                 tenant.getDefaultServiceTax(),
