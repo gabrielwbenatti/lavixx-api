@@ -31,6 +31,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final JsonMapper jsonMapper;
 
+    /**
+     * Rotas publicas (login, convite e cadastro de estabelecimento) nao dependem de token:
+     * um token vencido/invalido enviado por engano nao pode impedir o acesso a elas.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/auth/")
+                || ("POST".equalsIgnoreCase(request.getMethod()) && path.equals("/api/tenants"));
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
