@@ -17,5 +17,6 @@ public record ReportSummaryResponse(
         List<PaymentMethodTotal> byPaymentMethod,
         List<ServiceTotal> byService,
         List<ExpenseCategoryTotal> byExpenseCategory,
+        List<ServiceTimeStat> serviceTimes,   // tempo medio de execucao por servico
         List<EmployeeTotal> byEmployee) {   // producao por funcionario (OS concluidas no periodo)
 }

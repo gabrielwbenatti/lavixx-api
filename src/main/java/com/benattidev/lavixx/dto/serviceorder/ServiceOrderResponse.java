@@ -34,5 +34,6 @@ public record ServiceOrderResponse(
         OffsetDateTime issuedAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
+        OffsetDateTime startedAt,
         OffsetDateTime finishedAt) {
 }

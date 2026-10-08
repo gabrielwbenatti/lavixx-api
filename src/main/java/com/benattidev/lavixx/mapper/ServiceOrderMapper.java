@@ -80,6 +80,7 @@ public class ServiceOrderMapper {
                 order.getIssuedAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
+                order.getStartedAt(),
                 order.getFinishedAt());
     }
 

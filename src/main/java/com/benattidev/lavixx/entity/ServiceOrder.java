@@ -52,6 +52,10 @@ public class ServiceOrder extends BaseEntity {
     @Column(name = "status", nullable = false, columnDefinition = "service_status")
     private ServiceStatus status;
 
+    /** Quando a OS entrou em andamento (in_progress); com finishedAt da o tempo de execucao. */
+    @Column(name = "started_at")
+    private OffsetDateTime startedAt;
+
     @Column(name = "finished_at")
     private OffsetDateTime finishedAt;
 

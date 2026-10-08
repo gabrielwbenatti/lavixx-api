@@ -11,6 +11,7 @@ public record ServiceResponse(
         BigDecimal priceSmall,
         BigDecimal priceMedium,
         BigDecimal priceLarge,
+        Short durationMinutes,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
 }

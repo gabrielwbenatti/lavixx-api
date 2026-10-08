@@ -2,6 +2,7 @@ package com.benattidev.lavixx.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -22,6 +23,7 @@ import com.benattidev.lavixx.dto.report.EmployeeTotal;
 import com.benattidev.lavixx.dto.report.ExpenseCategoryTotal;
 import com.benattidev.lavixx.dto.report.PaymentMethodTotal;
 import com.benattidev.lavixx.dto.report.ReportSummaryResponse;
+import com.benattidev.lavixx.dto.report.ServiceTimeStat;
 import com.benattidev.lavixx.dto.report.ServiceTotal;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderItemResponse;
 import com.benattidev.lavixx.dto.serviceorder.ServiceOrderResponse;
@@ -34,6 +36,7 @@ import com.benattidev.lavixx.mapper.ServiceOrderMapper;
 import com.benattidev.lavixx.repository.ExpenseRepository;
 import com.benattidev.lavixx.repository.PaymentRepository;
 import com.benattidev.lavixx.repository.ServiceOrderRepository;
+import com.benattidev.lavixx.repository.ServiceRepository;
 import com.benattidev.lavixx.security.SecurityUtils;
 
 import lombok.RequiredArgsConstructor;
@@ -47,6 +50,7 @@ public class ReportService {
     private final ExpenseRepository expenseRepository;
     private final ServiceOrderMapper serviceOrderMapper;
     private final TenantTime tenantTime;
+    private final ServiceRepository serviceRepository;
 
     @Transactional(readOnly = true)
     public ReportSummaryResponse summary(LocalDate from, LocalDate to) {
@@ -137,7 +141,69 @@ public class ReportService {
                 byPaymentMethod,
                 byService,
                 byExpenseCategory,
+                serviceTimes(completed, tenantId),
                 byEmployee(completed));
+    }
+
+    /** OS concluida em menos que isso (cliques seguidos em Iniciar/Concluir) nao e medicao real. */
+    private static final long MIN_MEASURED_SECONDS = 60;
+
+    /**
+     * Tempo medio de execucao por servico. O tempo e da OS inteira (inicio -> conclusao), entao
+     * so entra na conta quando a OS tem um unico servico, com quantidade 1 (produtos sao
+     * ignorados); com varios servicos nao ha como dividir o tempo entre eles.
+     */
+    private List<ServiceTimeStat> serviceTimes(List<ServiceOrderResponse> completed, UUID tenantId) {
+        Map<UUID, List<Long>> secondsByService = new LinkedHashMap<>();
+
+        for (ServiceOrderResponse order : completed) {
+            if (order.startedAt() == null || order.finishedAt() == null) {
+                continue; // OS anterior a medicao, ou sem inicio registrado
+            }
+            long seconds = Duration.between(order.startedAt(), order.finishedAt()).getSeconds();
+            if (seconds < MIN_MEASURED_SECONDS) {
+                continue;
+            }
+            List<ServiceOrderItemResponse> serviceItems = order.items().stream()
+                    .filter(i -> i.serviceId() != null)
+                    .toList();
+            if (serviceItems.size() == 1 && serviceItems.get(0).quantity() == 1) {
+                secondsByService
+                        .computeIfAbsent(serviceItems.get(0).serviceId(), k -> new ArrayList<>())
+                        .add(seconds);
+            }
+        }
+        if (secondsByService.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, com.benattidev.lavixx.entity.Service> catalog = new LinkedHashMap<>();
+        serviceRepository.findAllByTenantId(tenantId).forEach(s -> catalog.put(s.getId(), s));
+
+        return secondsByService.entrySet().stream()
+                .filter(e -> catalog.containsKey(e.getKey()))
+                .map(e -> {
+                    List<Long> values = e.getValue().stream().sorted().toList();
+                    com.benattidev.lavixx.entity.Service service = catalog.get(e.getKey());
+                    return new ServiceTimeStat(
+                            e.getKey(),
+                            service.getName(),
+                            service.getDurationMinutes(),
+                            values.size(),
+                            toMinutes(values.stream().mapToLong(Long::longValue).sum() / values.size()),
+                            toMinutes(median(values)));
+                })
+                .sorted(Comparator.comparingLong(ServiceTimeStat::samples).reversed())
+                .toList();
+    }
+
+    private static long median(List<Long> sorted) {
+        int n = sorted.size();
+        return n % 2 == 1 ? sorted.get(n / 2) : (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2;
+    }
+
+    private static long toMinutes(long seconds) {
+        return Math.round(seconds / 60.0);
     }
 
     /**

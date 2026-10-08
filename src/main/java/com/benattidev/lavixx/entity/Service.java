@@ -45,6 +45,10 @@ public class Service extends BaseEntity {
     @Column(name = "price_large", precision = 10, scale = 2)
     private BigDecimal priceLarge;
 
+    /** Duracao estimada em minutos (opcional); base para a agenda e comparacao com o tempo real. */
+    @Column(name = "duration_minutes")
+    private Short durationMinutes;
+
     /** Preco de tabela para o porte informado (ou o padrao, se nao houver preco especifico). */
     public BigDecimal priceFor(VehicleSize size) {
         BigDecimal specific = size == null ? null : switch (size) {

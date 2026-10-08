@@ -248,6 +248,9 @@ public class ServiceOrderService {
         }
 
         order.setStatus(newStatus);
+        if (newStatus == ServiceStatus.in_progress && order.getStartedAt() == null) {
+            order.setStartedAt(OffsetDateTime.now());
+        }
         if (newStatus == ServiceStatus.done || newStatus == ServiceStatus.cancelled) {
             order.setFinishedAt(OffsetDateTime.now());
         }

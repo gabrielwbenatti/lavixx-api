@@ -47,6 +47,7 @@ public class ServiceCatalogService {
                 .priceSmall(request.priceSmall())
                 .priceMedium(request.priceMedium())
                 .priceLarge(request.priceLarge())
+                .durationMinutes(request.durationMinutes())
                 .build();
         return serviceMapper.toResponse(serviceRepository.save(service));
     }
@@ -59,6 +60,7 @@ public class ServiceCatalogService {
         service.setPriceSmall(request.priceSmall());
         service.setPriceMedium(request.priceMedium());
         service.setPriceLarge(request.priceLarge());
+        service.setDurationMinutes(request.durationMinutes());
         return serviceMapper.toResponse(service);
     }
 
